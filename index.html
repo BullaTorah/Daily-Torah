@@ -690,9 +690,9 @@ document.addEventListener("click", (e) => {
 
   try {
     const [words, lexicon, frequency] = await Promise.all([
-      loadJSON("oshb-word-lookup.clean.json"),
-      loadJSON("oshb-gloss-final.clean.json"),
-      loadJSON("oshb-lemma-frequency.json")
+      loadJSON("word-lookup.json"),
+      loadJSON("gloss.json"),
+      loadJSON("lemma-frequency.json")
     ]);
 
     WORD_LOOKUP = words;
