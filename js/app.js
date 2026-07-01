@@ -67,6 +67,8 @@ function lookup(word) {
 /* ---------------- RENDER ---------------- */
 
 function renderHebrew(text) {
+  if (!text) text = "";
+  if (typeof text !== "string") text = String(text);
   const container = document.createElement("span");
   
   text = String(text ?? "");
@@ -75,7 +77,12 @@ function renderHebrew(text) {
 
   
   
-  text.split(/[\s\u00A0־]+/).forEach(raw => {
+  const parts = String(text)
+  .replace(/\s+/g, " ")
+  .trim()
+  .split(/[\s\u00A0־]+/);
+
+parts.forEach(raw => {
     if (!raw) return;
 
     const info = lookup(raw);
