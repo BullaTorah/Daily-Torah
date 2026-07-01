@@ -312,15 +312,18 @@ document.getElementById("content").addEventListener("click", (e) => {
 
   window.TITLE = parsha.displayValue.en;
 
-// 1. render ticks FIRST (so DOM positions exist)
+// 1. render ticks FIRST
 layoutTicksEvenly();
 
-// 2. set slider BEFORE first render
+// 2. initialize slider position
 setDifficulty(0);
 
 // 3. render content
 render(window.TITLE, GLOBAL_VERSES);
-  
+
+// 4. ensure ticks are correct after layout paint
 window.addEventListener("load", () => {
   layoutTicksEvenly();
 });
+
+})(); // 🔴 THIS CLOSES init()
