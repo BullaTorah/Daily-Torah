@@ -202,14 +202,14 @@ function setKnobFromValue(val) {
 function setDifficulty(val) {
   window.DIFFICULTY = val;
 
-  setKnobFromValue(val);
+  const min = DIFFICULTY_STEPS[0];
+  const max = DIFFICULTY_STEPS[DIFFICULTY_STEPS.length - 1];
 
-  const content = document.getElementById("content");
-  content.innerHTML = "";
+  const percent = (val - min) / (max - min);
+  knob.style.left = `${percent * 100}%`;
 
+  document.getElementById("content").innerHTML = "";
   render(window.TITLE, GLOBAL_VERSES);
-
-  console.log("DIFFICULTY:", val);
 }
 
 /* ---------------- DRAG ---------------- */
