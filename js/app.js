@@ -194,9 +194,9 @@ document.getElementById("content").addEventListener("click",(e)=>{
 (async function init(){
 
   const [words,lex,freq] = await Promise.all([
-    loadJSON("word-lookup.json"),
-    loadJSON("gloss.json"),
-    loadJSON("lemma-frequency.json")
+    loadJSON("/data/word-lookup.json"),
+    loadJSON("/data/gloss.json"),
+    loadJSON("/data/lemma-frequency.json")
   ]);
 
   WORD_LOOKUP = words;
