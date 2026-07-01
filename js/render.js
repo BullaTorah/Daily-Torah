@@ -158,6 +158,26 @@ function normalizeVerses(data) {
   return verses;
 }
 
+function stripSefariaArtifacts(text) {
+  if (!text) return "";
+
+  return text
+    // remove duplicated footnote glue like "bdescendants"
+    .replace(/([a-z])([a-z]{1,20})(?=\s|$)/gi, (m, p1, p2) => {
+      if (p2.length <= 3) return p1; // kill tiny glued markers
+      return m;
+    })
+
+    // remove inline “Lit.” fragments safely (only standalone pattern)
+    .replace(/\bLit\.[^.;—]*[.;—]?/g, "")
+
+    // remove broken "Heb." fragments
+    .replace(/\bHeb\.[^.;—]*[.;—]?/g, "")
+
+    // collapse whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 
 
