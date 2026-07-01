@@ -2,217 +2,217 @@ let WORD_LOOKUP = {};
 let LEXICON = {};
 let FREQUENCY = {};
 let GLOBAL_VERSES = [];
+let suppressNextClick = false;
 
-let DIFFICULTY = 0;
-let isDragging = false;
-
-const STEPS = [0,100,200,300,400,500,1000,2000,3000,4000];
-
-const knob = document.getElementById("difficultyKnob");
-const bar = document.getElementById("difficultyBar");
-
-/* ---------------- LOAD ---------------- */
+const DIFFICULTY_STEPS = [0, 100, 200, 300, 400, 500, 1000, 2000, 3000];
 
 const loadJSON = async (url) => {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(url);
+  if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
   return res.json();
 };
 
-/* ---------------- NORMALIZE ---------------- */
+/* ---------------- NORMALIZATION ---------------- */
 
-function normalize(w){
-  return (w||"")
+function normalize(w) {
+  return (w || "")
     .normalize("NFKD")
-    .replace(/[\u0591-\u05C7]/g,"")
-    .replace(/[.,:;!?()\[\]"']/g,"")
+    .replace(/[\u0591-\u05C7]/g, "")
+    .replace(/־/g, "")
+    .replace(/[.,:;!?()\[\]"']/g, "")
+    .replace(/\s+/g, "")
     .trim();
+}
+
+function stripPrefixes(word) {
+  const prefixes = ["ו","ב","ל","כ","מ","ה","ש"];
+  if (prefixes.includes(word[0])) {
+    const candidate = word.slice(1);
+    if (candidate.length >= 3) return candidate;
+  }
+  return word;
+}
+
+function toStrongId(id) {
+  const match = String(id || "").match(/\d+/);
+  return match ? match[0] : null;
 }
 
 /* ---------------- LOOKUP ---------------- */
 
-function lookup(word){
+function lookup(word) {
   const clean = normalize(word);
 
   let strongs = WORD_LOOKUP[clean];
 
-  if(!strongs){
-    strongs = WORD_LOOKUP[clean.slice(1)];
+  if (!strongs) {
+    strongs = WORD_LOOKUP[stripPrefixes(clean)];
   }
 
-  if(!strongs){
-    return { gloss:"Unknown", lemma:null, strongs:null };
+  if (!strongs) {
+    return { lemma: null, gloss: "Unknown word", strongs: null };
   }
 
-  const entry = LEXICON[String(strongs)];
+  const entry =
+    LEXICON[String(strongs)] ||
+    LEXICON[String(strongs).replace(/^0+/, "")];
 
   return {
-    strongs,
-    lemma: entry?.lemma,
+    strongs: toStrongId(strongs),
+    lemma: entry?.lemma || null,
     gloss: entry?.gloss || "—"
   };
 }
 
-/* ---------------- DIFFICULTY ---------------- */
-
-function snap(val){
-  return STEPS.reduce((a,b)=>
-    Math.abs(b-val)<Math.abs(a-val)?b:a
-  );
-}
-
-function updateKnob(val){
-  const percent = (val - STEPS[0]) / (STEPS.at(-1) - STEPS[0]);
-  knob.style.left = `${percent*100}%`;
-}
-
-function setDifficulty(val){
-  DIFFICULTY = val;
-
-  updateKnob(val);
-
-  document.getElementById("content").innerHTML = "";
-
-  render(window.TITLE, GLOBAL_VERSES);
-}
-
 /* ---------------- RENDER ---------------- */
 
-function renderHebrew(text){
+function renderHebrew(text) {
   const container = document.createElement("span");
 
-  const level = DIFFICULTY;
+  const level = window.DIFFICULTY || 0;
 
-  text.split(/\s+/).forEach(raw => {
+  text.split(/[\s\u00A0־]+/).forEach(raw => {
+    if (!raw) return;
+
+    const info = lookup(raw);
+
+    const freq = FREQUENCY[String(info.strongs)] || null;
+    const rank = freq?.rank ?? Infinity;
+
+    const hide = level > 0 && rank > level;
 
     const el = document.createElement("span");
     el.className = "word";
     el.textContent = raw;
+    el.dataset.word = raw;
 
-    const info = lookup(raw);
-
-    const rank = FREQUENCY[info.strongs]?.rank ?? Infinity;
-
-    // ✅ FIXED LOGIC (THIS IS THE IMPORTANT PART)
-    let hide = false;
-
-    if(level === 0){
-      hide = false;
-    } else {
-      hide = rank > level;
-    }
-
-    if(hide){
-      el.classList.add("no-highlight");
-    }
+    if (hide) el.classList.add("no-highlight");
 
     container.appendChild(el);
-    container.appendChild(document.createTextNode(" "));
+    container.appendChild(" ");
   });
 
   return container;
 }
 
-function render(title, verses){
-  document.getElementById("title").textContent = title;
+function showPopup(data, anchor) {
+  const p = document.getElementById("popup");
 
-  const c = document.getElementById("content");
-  c.innerHTML = "";
+  p.innerHTML = `
+    <div><strong>${data.word}</strong></div>
+    <div>${data.gloss}</div>
+    ${data.lemma ? `<div>Lemma: ${data.lemma}</div>` : ""}
+    ${data.strongs ? `<div>Strong’s: ${data.strongs}</div>` : ""}
+  `;
 
-  verses.forEach(v=>{
-    const div = document.createElement("div");
-    div.className = "verse";
+  p.style.display = "block";
 
-    const h = document.createElement("div");
-    h.className = "hebrew";
-    h.appendChild(renderHebrew(v.he));
+  const r = anchor.getBoundingClientRect();
 
-    const e = document.createElement("div");
-    e.className = "english";
-    e.textContent = v.en;
-
-    div.appendChild(h);
-    div.appendChild(e);
-    c.appendChild(div);
-  });
+  p.style.top = `${r.bottom + window.scrollY + 8}px`;
+  p.style.left = `${r.left + window.scrollX}px`;
 }
 
 /* ---------------- SLIDER ---------------- */
 
-knob.addEventListener("mousedown",()=>{
-  isDragging = true;
-  knob.classList.add("dragging");
-});
+const knob = document.getElementById("difficultyKnob");
+const bar = document.getElementById("difficultyBar");
 
-document.addEventListener("mousemove",(e)=>{
-  if(!isDragging) return;
+function snap(val) {
+  return DIFFICULTY_STEPS.reduce((a,b)=>
+    Math.abs(a-val) < Math.abs(b-val) ? a : b
+  );
+}
 
+function getValue(x) {
   const rect = bar.getBoundingClientRect();
-  const x = e.clientX - rect.left;
+  const pct = (x - rect.left) / rect.width;
+  const min = DIFFICULTY_STEPS[0];
+  const max = DIFFICULTY_STEPS.at(-1);
 
-  const percent = Math.max(0,Math.min(1,x/rect.width));
+  return snap(min + pct * (max - min));
+}
 
-  knob.style.left = `${percent*100}%`;
-});
+function setDifficulty(val) {
+  window.DIFFICULTY = val;
 
-document.addEventListener("mouseup",(e)=>{
-  if(!isDragging) return;
+  const min = DIFFICULTY_STEPS[0];
+  const max = DIFFICULTY_STEPS.at(-1);
 
-  isDragging = false;
-  knob.classList.remove("dragging");
+  knob.style.left = `${(val - min)/(max - min) * 100}%`;
 
+  document.getElementById("content").innerHTML = "";
+  render(window.TITLE, GLOBAL_VERSES);
+}
+
+/* drag */
+let dragging = false;
+
+knob.addEventListener("mousedown", () => dragging = true);
+
+document.addEventListener("mousemove", (e) => {
+  if (!dragging) return;
   const rect = bar.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const percent = Math.max(0,Math.min(1,x/rect.width));
-
-  const raw = STEPS[0] + percent*(STEPS.at(-1)-STEPS[0]);
-
-  const snapped = snap(raw);
-
-  setDifficulty(snapped);
+  knob.style.left = `${(e.clientX-rect.left)/rect.width * 100}%`;
 });
 
-/* ---------------- CLICK POPUP ---------------- */
-
-document.getElementById("content").addEventListener("click",(e)=>{
-  const word = e.target.closest(".word");
-  if(!word) return;
-
-  const data = lookup(word.textContent);
-
-  const popup = document.getElementById("popup");
-
-  popup.style.display = "block";
-  popup.innerHTML = `
-    <div><b>${word.textContent}</b></div>
-    <div>${data.gloss}</div>
-  `;
+document.addEventListener("mouseup", (e) => {
+  if (!dragging) return;
+  dragging = false;
+  setDifficulty(getValue(e.clientX));
 });
+
+/* ---------------- RENDER ENTRY ---------------- */
+
+function render(title, verses) {
+  document.getElementById("title").textContent = title;
+
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  verses.forEach(v => {
+    const verse = document.createElement("div");
+    verse.className = "verse";
+
+    const he = document.createElement("div");
+    he.className = "hebrew";
+    he.appendChild(renderHebrew(v.he));
+
+    const en = document.createElement("div");
+    en.className = "english";
+    en.textContent = v.en;
+
+    verse.appendChild(he);
+    verse.appendChild(en);
+    content.appendChild(verse);
+  });
+}
 
 /* ---------------- INIT ---------------- */
 
-(async function init(){
+(async function init() {
+  WORD_LOOKUP = await loadJSON("data/word-lookup.json");
+  LEXICON = await loadJSON("data/gloss.json");
+  FREQUENCY = await loadJSON("data/lemma-frequency.json");
 
-  const [words,lex,freq] = await Promise.all([
-    loadJSON("/data/word-lookup.json"),
-    loadJSON("/data/gloss.json"),
-    loadJSON("/data/lemma-frequency.json")
-  ]);
+  const calendar = await loadJSON("https://www.sefaria.org/api/calendars");
 
-  WORD_LOOKUP = words;
-  LEXICON = lex;
-  FREQUENCY = freq;
+  const parsha = calendar.calendar_items.find(i => i.extraDetails?.aliyot);
 
-  const data = await loadJSON("https://www.sefaria.org/api/texts/Genesis.1.1-1.5?context=0");
+  let aliyah = parsha.extraDetails.aliyot[0]
+    .replace(/ /g, ".")
+    .replace(/:/g, ".");
 
-  GLOBAL_VERSES = data.he.map((v,i)=>({
-    he:v,
-    en:data.text[i]||""
+  const data = await fetch(`https://www.sefaria.org/api/texts/${aliyah}?context=0&pad=0`).then(r=>r.json());
+
+  GLOBAL_VERSES = data.he.map((h,i)=>({
+    he: h,
+    en: data.text?.[i] || ""
   }));
 
-  window.TITLE = "Genesis";
-
-  render(window.TITLE, GLOBAL_VERSES);
+  window.TITLE = parsha.displayValue.en;
 
   setDifficulty(0);
+
+  render(window.TITLE, GLOBAL_VERSES);
 })();
