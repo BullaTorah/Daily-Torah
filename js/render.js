@@ -57,3 +57,41 @@ if (strongId) {
 
   return container;
 }
+
+
+function normalizeVerses(data) {
+  let he = data.he || [];
+  let en = data.text || [];
+
+  // ensure arrays
+  if (!Array.isArray(he)) he = [he];
+  if (!Array.isArray(en)) en = [en];
+
+  const verses = [];
+
+  he.forEach((chapterHe, chapterIndex) => {
+    const chapterEn = en[chapterIndex] || [];
+
+    chapterHe.forEach((verseHe, verseIndex) => {
+      const verseEn = chapterEn[verseIndex] || "";
+
+      verses.push({
+        label: verses.length + 1,
+        he: stripSefariaArtifacts(String(verseHe)),
+        en: cleanEnglish(String(verseEn))
+      });
+    });
+  });
+
+  return verses;
+}
+
+
+
+
+
+
+
+
+
+
