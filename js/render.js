@@ -93,6 +93,43 @@ function cleanEnglish(text) {
 }
 
 
+function render(title, verses) {
+  document.getElementById("title").textContent = title;
+
+  const content = document.getElementById("content");
+  content.innerHTML = "";
+
+  verses.forEach(v => {
+    const verse = document.createElement("div");
+verse.className = "verse";
+
+const right = document.createElement("div");
+
+const num = document.createElement("div");
+num.className = "num";
+num.textContent = v.label;
+right.appendChild(num);
+
+    const hebrew = document.createElement("div");
+    hebrew.className = "hebrew";
+    hebrew.appendChild(renderHebrew(v.he));
+
+    const english = document.createElement("div");
+    english.className = "english";
+    english.textContent = cleanEnglish(v.en);
+
+    right.appendChild(hebrew);
+    right.appendChild(english);
+
+    
+    verse.appendChild(right);
+
+    content.appendChild(verse);
+
+
+  });
+}
+
 
 function normalizeVerses(data) {
   let he = data.he || [];
