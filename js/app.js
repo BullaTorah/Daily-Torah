@@ -167,33 +167,71 @@ function showPopup(data, anchor) {
 const knob = document.getElementById("difficultyKnob");
 const bar = document.getElementById("difficultyBar");
 
+const min = DIFFICULTY_STEPS[0];
+const max = DIFFICULTY_STEPS[DIFFICULTY_STEPS.length - 1];
+
 function snap(val) {
   return DIFFICULTY_STEPS.reduce((a, b) =>
     Math.abs(a - val) < Math.abs(b - val) ? a : b
   );
 }
 
-function getValue(x) {
-  const rect = bar.getBoundingClientRect();
-  const pct = (x - rect.left) / rect.width;
+function valueToPercent(val) {
+  return (val - min) / (max - min);
+}
 
-  const min = DIFFICULTY_STEPS[0];
-  const max = DIFFICULTY_STEPS.at(-1);
-
+function percentToValue(pct) {
   return snap(min + pct * (max - min));
 }
 
+function setKnobFromValue(val) {
+  knob.style.left = `${valueToPercent(val) * 100}%`;
+}
+
+/* IMPORTANT: single source of truth */
 function setDifficulty(val) {
   window.DIFFICULTY = val;
 
-  const min = DIFFICULTY_STEPS[0];
-  const max = DIFFICULTY_STEPS.at(-1);
+  setKnobFromValue(val);
 
-  knob.style.left = `${(val - min) / (max - min) * 100}%`;
+  const content = document.getElementById("content");
+  content.innerHTML = "";
 
-  document.getElementById("content").innerHTML = "";
   render(window.TITLE, GLOBAL_VERSES);
+
+  console.log("DIFFICULTY:", val);
 }
+
+/* ---------------- DRAG ---------------- */
+
+let dragging = false;
+
+knob.addEventListener("mousedown", (e) => {
+  dragging = true;
+  e.preventDefault();
+});
+
+document.addEventListener("mousemove", (e) => {
+  if (!dragging) return;
+
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+  // visual only while dragging (NO snapping yet)
+  knob.style.left = `${pct * 100}%`;
+});
+
+document.addEventListener("mouseup", (e) => {
+  if (!dragging) return;
+  dragging = false;
+
+  const rect = bar.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+
+  const val = percentToValue(pct);
+
+  setDifficulty(val);
+});
 
 /* ---------------- RENDER ---------------- */
 
