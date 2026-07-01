@@ -68,9 +68,13 @@ function lookup(word) {
 
 function renderHebrew(text) {
   const container = document.createElement("span");
+  
+  text = String(text ?? "");
 
   const level = window.DIFFICULTY || 0;
 
+  
+  
   text.split(/[\s\u00A0־]+/).forEach(raw => {
     if (!raw) return;
 
