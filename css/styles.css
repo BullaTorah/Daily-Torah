@@ -1,1 +1,117 @@
 
+body {
+  font-family: "EB Garamond", serif;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 0 24px;
+  background: #f5f2e9;
+  color: #111;
+}
+
+h1 { text-align: center; font-weight: 600; }
+
+#aliyah-info {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 18px;
+}
+
+.verse { margin-bottom: 28px; }
+
+.num {
+  text-align: center;
+  color: #999;
+  margin-bottom: 10px;
+}
+
+.hebrew {
+  direction: rtl;
+  font-family: "Heebo", sans-serif;
+  font-size: 40px;
+  line-height: 2;
+}
+
+.english {
+  color: rgba(0,0,0,0.55);
+  font-size: 18px;
+  margin-top: 8px;
+}
+
+.word {
+  cursor: pointer;
+  padding: 0 2px;
+  font-weight: 600;
+  position: relative;
+}
+
+.word::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10%;
+  height: 30%;
+  background: rgba(210, 193, 142, 0.3);
+  z-index: -1;
+}
+
+.word.no-highlight::after {
+  content: none !important;
+}
+
+#popup {
+  position: absolute;
+  display: none;
+  background: #fff;
+  color: #000;
+  padding: 30px 36px;
+  max-width: 260px;
+  font-size: 14px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* slider */
+#difficultyWrap {
+  width: 100%;
+  max-width: 600px;
+  margin: 10px auto 30px auto;
+  position: relative;
+}
+
+#difficultyBar {
+  position: relative;
+  height: 40px;
+}
+
+#difficultyTrack {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: #111;
+}
+
+#difficultyKnob {
+  position: absolute;
+  top: 10px;
+  width: 18px;
+  height: 18px;
+  background: #000;
+  transform: translateX(-50%);
+  cursor: grab;
+}
+
+#difficultyKnob.dragging {
+  cursor: grabbing;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: #444;
+}
