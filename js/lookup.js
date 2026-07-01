@@ -56,3 +56,42 @@ function isValidLemma(v) {
   if (/^[a-z]$/i.test(v)) return false;
   return true;
 }
+
+function lookup(word) {
+  const cleanWord = normalize(word);
+
+  // STEP 1: try direct match
+  let strongs = WORD_LOOKUP[cleanWord];
+
+  // STEP 2: fallback — strip prefix once safely
+  if (!strongs) {
+    const stripped = stripPrefixes(cleanWord);
+    strongs = WORD_LOOKUP[stripped];
+  }
+
+  console.log("LOOKUP TRACE:", {
+    word,
+    cleanWord,
+    strongs
+  });
+
+  if (!strongs) {
+    return {
+      lemma: null,
+      gloss: "Unknown word",
+      strongs: null
+    };
+  }
+
+  const entry =
+    LEXICON[String(strongs)] ||
+    LEXICON[String(strongs).replace(/^0+/, "")];
+
+  const strongId = toStrongId(strongs);
+
+return {
+  strongs: strongId,
+  lemma: entry?.lemma || null,
+  gloss: entry?.gloss || "—"
+};
+}
