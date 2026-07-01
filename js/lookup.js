@@ -32,3 +32,27 @@ function toStrongId(id) {
   return match ? match[0] : null;
 }
 
+function stripNiqqud(str) {
+  return (str || "")
+    // vowel points + cantillation marks
+    .replace(/[\u0591-\u05C7]/g, "")
+    // remove paseq (׀)
+    .replace(/\u05C0/g, "")
+    .trim();
+}
+
+function normalizeLemmaId(id) {
+  if (!id) return null;
+  return id
+    .replace(/^[a-z]\//i, "")
+    .replace(/\s+[a-z]$/i, "")
+    .trim();
+}
+
+function isValidLemma(v) {
+  if (!v) return false;
+  if (/^[0-9]+$/.test(v)) return true;
+  if (/^[0-9]+\s?[a-z]?$/i.test(v)) return true;
+  if (/^[a-z]$/i.test(v)) return false;
+  return true;
+}
