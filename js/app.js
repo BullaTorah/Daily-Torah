@@ -6,6 +6,16 @@ let suppressNextClick = false;
 
 const DIFFICULTY_STEPS = [0, 100, 200, 300, 400, 500, 1000, 2000, 3000];
 
+function layoutTicksEvenly() {
+  const ticks = document.querySelectorAll(".tick");
+
+  ticks.forEach((tick, i) => {
+    const percent = i / (DIFFICULTY_STEPS.length - 1);
+    tick.style.left = `${percent * 100}%`;
+    tick.textContent = DIFFICULTY_STEPS[i];
+  });
+}
+
 const loadJSON = async (url) => {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
@@ -302,6 +312,12 @@ document.getElementById("content").addEventListener("click", (e) => {
 
   window.TITLE = parsha.displayValue.en;
 
-  setDifficulty(0);
-  render(window.TITLE, GLOBAL_VERSES);
+// 1. render ticks FIRST (so DOM positions exist)
+layoutTicksEvenly();
+
+// 2. set slider BEFORE first render
+setDifficulty(0);
+
+// 3. render content
+render(window.TITLE, GLOBAL_VERSES);
 })();
