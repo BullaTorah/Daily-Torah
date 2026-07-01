@@ -6,6 +6,8 @@ let suppressNextClick = false;
 
 const DIFFICULTY_STEPS = [0, 100, 200, 300, 400, 500, 1000, 2000, 3000];
 
+/* ---------------- FETCH ---------------- */
+
 const loadJSON = async (url) => {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Fetch failed ${res.status}`);
@@ -26,10 +28,12 @@ function normalize(w) {
 
 function stripPrefixes(word) {
   const prefixes = ["ו","ב","ל","כ","מ","ה","ש"];
-  if (prefixes.includes(word[0])) {
+
+  if (word && prefixes.includes(word[0])) {
     const candidate = word.slice(1);
     if (candidate.length >= 3) return candidate;
   }
+
   return word;
 }
 
@@ -64,25 +68,22 @@ function lookup(word) {
   };
 }
 
-/* ---------------- RENDER ---------------- */
+/* ---------------- RENDER HEBREW ---------------- */
 
 function renderHebrew(text) {
-  if (!text) text = "";
-  if (typeof text !== "string") text = String(text);
   const container = document.createElement("span");
-  
-  text = String(text ?? "");
 
-  const level = window.DIFFICULTY || 0;
+  // 🔥 CRITICAL FIX: ensure string always
+  const safeText = String(text ?? "");
 
-  
-  
-  const parts = String(text)
-  .replace(/\s+/g, " ")
-  .trim()
-  .split(/[\s\u00A0־]+/);
+  const level = Number(window.DIFFICULTY || 0);
 
-parts.forEach(raw => {
+  const parts = safeText
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/[\s\u00A0־]+/);
+
+  parts.forEach(raw => {
     if (!raw) return;
 
     const info = lookup(raw);
@@ -100,11 +101,13 @@ parts.forEach(raw => {
     if (hide) el.classList.add("no-highlight");
 
     container.appendChild(el);
-    container.appendChild(" ");
+    container.appendChild(document.createTextNode(" "));
   });
 
   return container;
 }
+
+/* ---------------- POPUP ---------------- */
 
 function showPopup(data, anchor) {
   const p = document.getElementById("popup");
@@ -130,18 +133,21 @@ const knob = document.getElementById("difficultyKnob");
 const bar = document.getElementById("difficultyBar");
 
 function snap(val) {
-  return DIFFICULTY_STEPS.reduce((a,b)=>
-    Math.abs(a-val) < Math.abs(b-val) ? a : b
+  return DIFFICULTY_STEPS.reduce((a, b) =>
+    Math.abs(a - val) < Math.abs(b - val) ? a : b
   );
 }
 
 function getValue(x) {
   const rect = bar.getBoundingClientRect();
   const pct = (x - rect.left) / rect.width;
+
   const min = DIFFICULTY_STEPS[0];
   const max = DIFFICULTY_STEPS.at(-1);
 
-  return snap(min + pct * (max - min));
+  const raw = min + pct * (max - min);
+
+  return snap(raw);
 }
 
 function setDifficulty(val) {
@@ -150,21 +156,25 @@ function setDifficulty(val) {
   const min = DIFFICULTY_STEPS[0];
   const max = DIFFICULTY_STEPS.at(-1);
 
-  knob.style.left = `${(val - min)/(max - min) * 100}%`;
+  knob.style.left = `${((val - min) / (max - min)) * 100}%`;
 
   document.getElementById("content").innerHTML = "";
   render(window.TITLE, GLOBAL_VERSES);
 }
 
-/* drag */
+/* ---------------- DRAG ---------------- */
+
 let dragging = false;
 
 knob.addEventListener("mousedown", () => dragging = true);
 
 document.addEventListener("mousemove", (e) => {
   if (!dragging) return;
+
   const rect = bar.getBoundingClientRect();
-  knob.style.left = `${(e.clientX-rect.left)/rect.width * 100}%`;
+  const pct = (e.clientX - rect.left) / rect.width;
+
+  knob.style.left = `${pct * 100}%`;
 });
 
 document.addEventListener("mouseup", (e) => {
@@ -173,7 +183,7 @@ document.addEventListener("mouseup", (e) => {
   setDifficulty(getValue(e.clientX));
 });
 
-/* ---------------- RENDER ENTRY ---------------- */
+/* ---------------- RENDER ---------------- */
 
 function render(title, verses) {
   document.getElementById("title").textContent = title;
@@ -199,6 +209,25 @@ function render(title, verses) {
   });
 }
 
+/* ---------------- CLICK POPUP ---------------- */
+
+document.getElementById("content").addEventListener("click", (e) => {
+  const word = e.target.closest(".word");
+  if (!word) return;
+
+  const data = lookup(word.dataset.word);
+
+  showPopup(
+    {
+      word: word.dataset.word,
+      gloss: data.gloss,
+      lemma: data.lemma,
+      strongs: data.strongs
+    },
+    word
+  );
+});
+
 /* ---------------- INIT ---------------- */
 
 (async function init() {
@@ -214,16 +243,19 @@ function render(title, verses) {
     .replace(/ /g, ".")
     .replace(/:/g, ".");
 
-  const data = await fetch(`https://www.sefaria.org/api/texts/${aliyah}?context=0&pad=0`).then(r=>r.json());
+  const data = await fetch(
+    `https://www.sefaria.org/api/texts/${aliyah}?context=0&pad=0`
+  ).then(r => r.json());
 
-  GLOBAL_VERSES = data.he.map((h,i)=>({
+  GLOBAL_VERSES = data.he.map((h, i) => ({
     he: h,
     en: data.text?.[i] || ""
   }));
 
   window.TITLE = parsha.displayValue.en;
 
-  setDifficulty(0);
+  window.DIFFICULTY = 0;
 
+  setDifficulty(0);
   render(window.TITLE, GLOBAL_VERSES);
 })();
