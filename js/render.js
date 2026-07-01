@@ -87,7 +87,39 @@ function normalizeVerses(data) {
 }
 
 
+function cleanEnglish(text) {
+  if (!text) return "";
 
+  if (Array.isArray(text)) {
+    text = text.join(" ");
+  }
+
+  text = String(text);
+
+  return text
+    // 1. remove HTML
+    .replace(/<[^>]*>/g, "")
+
+    // 2. remove full footnote sentences
+    .replace(/\b(Lit\.|Heb\.)[^.;—]*[.;—]?/g, "")
+
+    // 3. FIX: remove glued footnote prefixes inside words (bdescendants → descendants)
+    .replace(/([a-z])([a-z]{2,})(?=[A-Z\u0590-\u05FF])/g, (m, a, b) => {
+      // drop tiny prefixes like "b" or "a"
+      if (a.length === 1) return b;
+      return m;
+    })
+
+    // 4. FIX: catch missing-space insertions between real words
+    .replace(/([a-z])([A-Z][a-z]+)/g, "$1 $2")
+
+    // 5. FIX: remove duplicated clause injection like "abetook"
+    .replace(/\b([a-z])([A-Z][a-z]+)/g, "$2")
+
+    // 6. normalize whitespace
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
 
 
