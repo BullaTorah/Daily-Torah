@@ -221,6 +221,26 @@ function render(title, verses) {
   });
 }
 
+
+/* ---------------- POPUP CLICK HANDLER ---------------- */
+
+document.getElementById("content").addEventListener("click", (e) => {
+  const word = e.target.closest(".word");
+  if (!word) return;
+
+  const data = lookup(word.dataset.word);
+
+  showPopup(
+    {
+      word: word.dataset.word,
+      gloss: data.gloss,
+      lemma: data.lemma,
+      strongs: data.strongs
+    },
+    word
+  );
+});
+
 /* ---------------- INIT ---------------- */
 
 (async function init() {
