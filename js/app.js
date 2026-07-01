@@ -320,4 +320,7 @@ setDifficulty(0);
 
 // 3. render content
 render(window.TITLE, GLOBAL_VERSES);
-})();
+  
+window.addEventListener("load", () => {
+  layoutTicksEvenly();
+});
