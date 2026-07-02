@@ -142,7 +142,17 @@ function renderHebrew(text) {
     const freq = FREQUENCY[String(info.strongs)] || null;
     const rank = freq?.rank ?? Infinity;
 
-    const hide = level > 0 && rank > level;
+    let hide = false;
+
+    if (level === Infinity) {
+      hide = true;
+    }
+    else if (level === 0) {
+      hide = false;
+    }
+    else {
+      hide = rank > level;
+    }
 
     const el = document.createElement("span");
     el.className = "word";
@@ -186,10 +196,12 @@ const bar = document.getElementById("difficultyBar");
 const min = DIFFICULTY_STEPS[0];
 const max = DIFFICULTY_STEPS[DIFFICULTY_STEPS.length - 1];
 
-function snap(val) {
-  return DIFFICULTY_STEPS.reduce((a, b) =>
-    Math.abs(a - val) < Math.abs(b - val) ? a : b
+function snap(percent) {
+  const index = Math.round(
+    percent * (DIFFICULTY_STEPS.length - 1)
   );
+
+  return DIFFICULTY_STEPS[index];
 }
 
 function valueToPercent(val) {
@@ -205,16 +217,17 @@ function setKnobFromValue(val) {
 }
 
 /* IMPORTANT: single source of truth */
-function setDifficulty(val) {
-  window.DIFFICULTY = val;
+function setDifficulty(value) {
 
-  const min = DIFFICULTY_STEPS[0];
-  const max = DIFFICULTY_STEPS[DIFFICULTY_STEPS.length - 1];
+  window.DIFFICULTY = value;
 
-  const percent = (val - min) / (max - min);
-  knob.style.left = `${percent * 100}%`;
+  const index = DIFFICULTY_STEPS.findIndex(
+    d => d.value === value
+  );
 
-  document.getElementById("content").innerHTML = "";
+  knob.style.left =
+    `${index / (DIFFICULTY_STEPS.length - 1) * 100}%`;
+
   render(window.TITLE, GLOBAL_VERSES);
 }
 
@@ -238,15 +251,25 @@ document.addEventListener("mousemove", (e) => {
 });
 
 document.addEventListener("mouseup", (e) => {
+
   if (!dragging) return;
+
   dragging = false;
 
   const rect = bar.getBoundingClientRect();
-  const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
 
-  const val = percentToValue(pct);
+  const percent = Math.max(
+    0,
+    Math.min(
+      1,
+      (e.clientX - rect.left) / rect.width
+    )
+  );
 
-  setDifficulty(val);
+  const difficulty = snap(percent);
+
+  setDifficulty(difficulty.value);
+
 });
 
 /* ---------------- RENDER ---------------- */
