@@ -4,7 +4,12 @@ let FREQUENCY = {};
 let GLOBAL_VERSES = [];
 let suppressNextClick = false;
 
-const DIFFICULTY_STEPS = [0, 100, 200, 300, 400, 500, 1000, 2000, 3000];
+const DIFFICULTY_STEPS = [
+  { label: "Beginner", value: 0 },
+  { label: "Easy", value: 200 },
+  { label: "Hard", value: 500 },
+  { label: "Advanced", value: Infinity }
+];
 
 function layoutTicksEvenly() {
   const ticks = document.querySelectorAll(".tick");
