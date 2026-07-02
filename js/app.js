@@ -15,9 +15,10 @@ function layoutTicksEvenly() {
   const ticks = document.querySelectorAll(".tick");
 
   ticks.forEach((tick, i) => {
-    const percent = i / (DIFFICULTY_STEPS.length - 1);
-    tick.style.left = `${percent * 100}%`;
-    tick.textContent = DIFFICULTY_STEPS[i];
+    tick.style.left =
+      `${i / (DIFFICULTY_STEPS.length - 1) * 100}%`;
+
+    tick.textContent = DIFFICULTY_STEPS[i].label;
   });
 }
 
