@@ -135,35 +135,39 @@ function renderHebrew(text) {
     .split(/[\s\u00A0־]+/);
 
   parts.forEach(raw => {
-  if (!raw) return;
+    if (!raw) return;
 
-  // 🔥 REMOVE NON-WORD ARTIFACTS FIRST
-  let token = raw
-    .replace(/\(.*?\)/g, "")     // remove parenthetical annotations
-    .replace(/\*/g, "")          // remove asterisks
-    .replace(/[.,:;!?"]/g, "")   // punctuation cleanup
-    .trim();
+    // 1. CLEAN TOKEN
+    let token = raw
+      .replace(/\(.*?\)/g, "")     // remove parenthetical notes
+      .replace(/\*/g, "")          // remove asterisks
+      .replace(/[.,:;!?"]/g, "")   // punctuation
+      .trim();
 
-  if (!token) return;
+    if (!token) return;
 
-    
+    // 2. LOOKUP
+    const info = lookup(token);
 
+    // 3. FREQUENCY → RANK (THIS WAS MISSING)
+    const freq = FREQUENCY[String(info.strongs)] || null;
+    const rank = freq?.rank ?? Infinity;
+
+    // 4. HIDE LOGIC (CORRECT AND SIMPLE)
     let hide = false;
 
-// Beginner: show everything highlighted
-if (level === 0) {
-  hide = false;
-}
+    if (level === 0) {
+      hide = false;
+    } else {
+      hide = rank <= level;
+    }
 
-// Easy / Hard / Advanced: apply rank thresholding
-else {
-  hide = rank <= level;
-}
-
+    // 5. RENDER
     const el = document.createElement("span");
     el.className = "word";
-    el.textContent = stripSefariaArtifacts(raw);
-    el.dataset.word = raw;
+
+    el.textContent = token;
+    el.dataset.word = token;
 
     if (hide) el.classList.add("no-highlight");
 
