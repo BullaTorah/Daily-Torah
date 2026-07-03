@@ -8,7 +8,7 @@ const DIFFICULTY_STEPS = [
   { label: "Beginner", value: 0 },
   { label: "Easy", value: 200 },
   { label: "Hard", value: 500 },
-  { label: "Advanced", value: Infinity }
+  { label: "Advanced", value: 999999 }
 ];
 
 function layoutTicksEvenly() {
@@ -151,15 +151,18 @@ function renderHebrew(text) {
       });
     }
 
-    let hide = false;
+    let hide;
 
-    if (level === Infinity) {
-      hide = true;
-    }
-    else if (level === 0) {
+    if (level === 0) {
+      // Beginner: show EVERYTHING (no hiding)
       hide = false;
     }
+    else if (level === Infinity) {
+      // Advanced: hide EVERYTHING
+      hide = true;
+    }
     else {
+      // Normal behavior: hide words ABOVE threshold
       hide = rank > level;
     }
 
