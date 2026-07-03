@@ -154,15 +154,15 @@ function renderHebrew(text) {
     let hide;
 
     if (level === 0) {
-      // Beginner: show EVERYTHING (no hiding)
+      // Beginner: show everything (nothing hidden)
       hide = false;
     }
-    else if (level === Infinity) {
-      // Advanced: hide EVERYTHING
+    else if (level === 999999 || level === Infinity) {
+      // Advanced: hide everything
       hide = true;
     }
     else {
-      // Normal behavior: hide words ABOVE threshold
+      // Normal threshold behavior
       hide = rank > level;
     }
 
