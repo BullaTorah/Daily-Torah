@@ -135,12 +135,16 @@ function renderHebrew(text) {
     .split(/[\s\u00A0־]+/);
 
   parts.forEach(raw => {
-    if (!raw) return;
+  if (!raw) return;
 
-    const info = lookup(raw);
+  // 🔥 REMOVE NON-WORD ARTIFACTS FIRST
+  let token = raw
+    .replace(/\(.*?\)/g, "")     // remove parenthetical annotations
+    .replace(/\*/g, "")          // remove asterisks
+    .replace(/[.,:;!?"]/g, "")   // punctuation cleanup
+    .trim();
 
-    const freq = FREQUENCY[String(info.strongs)] || null;
-    const rank = freq?.rank ?? Infinity;
+  if (!token) return;
 
     
 
@@ -359,4 +363,4 @@ window.addEventListener("load", () => {
 
 })(); // 🔴 THIS CLOSES init()
 
-console.log("APP VERSION: ADVANCED FIX LOADED 2");
+console.log("APP VERSION: ADVANCED FIX LOADED 3");
