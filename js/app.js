@@ -142,14 +142,7 @@ function renderHebrew(text) {
     const freq = FREQUENCY[String(info.strongs)] || null;
     const rank = freq?.rank ?? Infinity;
 
-    if (raw.includes("מֹש") || raw.includes("משה")) {
-      console.log({
-        word: raw,
-        strongs: info.strongs,
-        freq,
-        rank
-      });
-    }
+    
 
     let hide;
 
