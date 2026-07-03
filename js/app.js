@@ -146,17 +146,14 @@ function renderHebrew(text) {
 
     let hide = false;
 
-// Beginner: show everything
+// Beginner: show everything highlighted
 if (level === 0) {
   hide = false;
 }
-// Advanced: hide everything
-else if (level === 999999) {
-  hide = true;
-}
-// Normal thresholds
+
+// Easy / Hard / Advanced: apply rank thresholding
 else {
-  hide = rank > level;
+  hide = rank <= level;
 }
 
     const el = document.createElement("span");
