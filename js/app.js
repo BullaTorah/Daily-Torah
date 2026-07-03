@@ -144,20 +144,20 @@ function renderHebrew(text) {
 
     
 
-    let hide;
+    let hide = false;
 
-    if (level === 0) {
-      // Beginner: show everything (nothing hidden)
-      hide = false;
-    }
-    else if (level === 999999 || level === Infinity) {
-      // Advanced: hide everything
-      hide = true;
-    }
-    else {
-      // Normal threshold behavior
-      hide = rank > level;
-    }
+// Beginner: show everything
+if (level === 0) {
+  hide = false;
+}
+// Advanced: hide everything
+else if (level === 999999) {
+  hide = true;
+}
+// Normal thresholds
+else {
+  hide = rank > level;
+}
 
     const el = document.createElement("span");
     el.className = "word";
