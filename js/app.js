@@ -367,4 +367,4 @@ window.addEventListener("load", () => {
 
 })(); // 🔴 THIS CLOSES init()
 
-console.log("APP VERSION: ADVANCED FIX LOADED 3");
+console.log("APP VERSION: ADVANCED FIX LOADED 4");
