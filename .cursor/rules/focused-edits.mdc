@@ -1,0 +1,37 @@
+---
+description: Minimize file reads; stay scoped to the task and @-mentioned files
+alwaysApply: true
+---
+
+# Focused edits — minimal file exploration
+
+## Default scope
+
+- Only open files **directly needed** for the change the user is discussing.
+- If the user `@`-mentions a file or has one focused in chat, **start there** and treat it as the primary scope.
+- Do **not** broadly explore the repo, run wide searches, or read unrelated modules “to get context” unless the task truly requires it.
+- Prefer **one targeted read** over reading many files. If unsure which file matters, ask — don’t grep the whole project.
+
+## Large data files — read rarely
+
+Do **not** open, read, grep, or search inside these unless the user explicitly asks about lexicon/lookup data or a bug clearly requires inspecting them:
+
+- `data/word-lookup.json`
+- `data/gloss.json`
+- `data/lemma-frequency.json`
+
+For lookup/lexicon work, use `js/core/lookup.js` and existing APIs instead of opening the JSON blobs.
+
+## When exploration is OK
+
+- User asks for architecture overview, refactor across modules, or “find where X is handled”
+- A fix in one file fails and a **single** related import/caller must be checked
+- User explicitly says to search the codebase
+
+## Before opening another file, ask
+
+1. Is this file necessary for the requested change?
+2. Can I answer from what’s already in context?
+3. Am I about to open a large data file when logic in `js/` would suffice?
+
+If all three suggest “no,” don’t open it.

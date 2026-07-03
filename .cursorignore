@@ -1,0 +1,4 @@
+# Large static lexicon assets — avoid indexing unless explicitly needed
+data/word-lookup.json
+data/gloss.json
+data/lemma-frequency.json
