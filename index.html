@@ -13,25 +13,36 @@
 
 <body>
 
-<h1 id="title">Loading Torah...</h1>
-<div id="aliyah-info"></div>
+<div id="topBar">
+  <div class="text-column">
+    <h1 id="title">Loading Torah...</h1>
 
-<div id="difficultyWrap">
-  <div id="difficultyBar">
-    <div id="difficultyTrack"></div>
-    <div id="difficultyKnob"></div>
+    <div id="controls">
+      <div class="aliyah-section">
+        <div class="section-label">Aliyah</div>
+        <div id="aliyahTabs" class="segment-tabs" role="tablist"></div>
+      </div>
 
-    <div class="tick">Beginner</div>
-    <div class="tick">Easy</div>
-    <div class="tick">Hard</div>
-    <div class="tick">Advanced</div>
+      <div id="diasporaTabs" class="segment-tabs" role="tablist">
+        <button type="button" class="segment-tab" data-diaspora="true">Diaspora</button>
+        <button type="button" class="segment-tab" data-diaspora="false">Israel</button>
+      </div>
+    </div>
   </div>
+</div>
+
+<div id="difficultyBar">
+  <div id="difficultyTabs" class="segment-tabs text-column" role="tablist"></div>
+</div>
+
+<div class="text-column">
+  <div id="aliyah-info"></div>
 </div>
 
 <div id="content"></div>
 <div id="popup"></div>
 
-<script src="js/app.js"></script>
+<script type="module" src="js/app.js"></script>
 
 </body>
 </html>
