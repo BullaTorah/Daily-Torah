@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-07-09T20:35:41.174Z",
+  "source": "TAHOT Gen-Deu (STEPBible)",
+  "totals": {
+    "tokens": 76490,
+    "verses": 5607,
+    "missingStrongs": 0
+  },
+  "byBook": {
+    "Genesis": 20161,
+    "Exodus": 15864,
+    "Leviticus": 11539,
+    "Numbers": 15752,
+    "Deuteronomy": 13174
+  },
+  "byTextType": {
+    "L": 76242,
+    "LAH(b)": 3,
+    "L(abh)": 17,
+    "LA(bh)": 5,
+    "X": 9,
+    "Q(k)": 22,
+    "Q(K)": 50,
+    "LBH(A)": 1,
+    "LBH(a)": 4,
+    "L(S)": 4,
+    "LA(BH)": 1,
+    "LB(ah)": 4,
+    "L(p)": 115,
+    "L(E)": 1,
+    "LB(ha)": 1,
+    "L(b+p)": 6,
+    "L(a+bh)": 1,
+    "L(AH+B)": 1,
+    "L(P)": 2,
+    "LAB(h)": 1
+  },
+  "samples": {
+    "hadavar": [
+      {
+        "verseRef": "Genesis.41.32",
+        "index": 9,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697I}"
+      },
+      {
+        "verseRef": "Exodus.16.16",
+        "index": 2,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697G}"
+      },
+      {
+        "verseRef": "Exodus.16.32",
+        "index": 4,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697I}"
+      },
+      {
+        "verseRef": "Deuteronomy.1.17",
+        "index": 16,
+        "hebrew": "וְ/הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9002/H9009/{H1697L}"
+      },
+      {
+        "verseRef": "Deuteronomy.4.2",
+        "index": 4,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697G}"
+      },
+      {
+        "verseRef": "Deuteronomy.17.10",
+        "index": 4,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697J}"
+      },
+      {
+        "verseRef": "Deuteronomy.18.22",
+        "index": 8,
+        "hebrew": "הַ/דָּבָר֙",
+        "strongs": "1697",
+        "dStrongs": "H9009/{H1697G}"
+      }
+    ]
+  }
+}
