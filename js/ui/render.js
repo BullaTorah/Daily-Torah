@@ -60,19 +60,17 @@ export function getGlobalVerses() {
 function renderHebrew(verse, { animate = false, wordOffset = 0 } = {}) {
   const container = document.createElement("span");
   const parts = tokenizeHebrewVerse(verse.he);
-  const prealigned = verse.tokens?.length === parts.length ? verse.tokens : null;
   let revealIndex = wordOffset;
 
   parts.forEach((token, index) => {
-    const tokenMeta = prealigned?.[index] || null;
-    const sense = tokenMeta?.sense || resolveWord({
+    const tokenMeta = verse.tokens?.[index] ?? null;
+    const sense = resolveWord({
       word: token,
       verseRef: verse.ref,
       tokenIndex: index + 1,
-      strongs: tokenMeta?.strongs,
-      sense: tokenMeta?.sense
+      strongs: tokenMeta?.strongs ?? null
     });
-    const rank = sense.rank ?? Infinity;
+    const rank = sense.rank ?? 0;
     const hide = shouldHideWord(rank, currentDifficulty);
 
     const el = document.createElement("span");

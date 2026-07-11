@@ -1,7 +1,8 @@
-import { consonantal, displaySurface } from "./normalize-hebrew.js";
+import { consonantal, displaySurface, cleanTahotSurface } from "./normalize-hebrew.js";
 
 function tahotConsonantal(token) {
-  return consonantal(token.surface || displaySurface(token.hebrew));
+  const surface = cleanTahotSurface(token.surface || displaySurface(token.hebrew));
+  return consonantal(surface);
 }
 
 function sefariaConsonantal(surface) {

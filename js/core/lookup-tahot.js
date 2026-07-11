@@ -91,15 +91,19 @@ export function attachTahotTokens(verses) {
     const tahotTokens = verseIndex.get(verse.ref) || [];
     const aligned = alignVerseTokens(sefariaTokens, tahotTokens);
 
-    const tokens = aligned.map((entry) => ({
-      index: entry.index,
-      surface: entry.surface,
-      aligned: entry.aligned,
-      strongs: entry.tahot?.strongs || null,
-      morph: entry.tahot?.morph || null,
-      dStrongs: entry.tahot?.dStrongs || null,
-      sense: buildTokenSense(entry.tahot)
-    }));
+    const tokens = aligned.map((entry) => {
+      const tahotToken = entry.tahot ?? resolveVerseToken(verse.ref, entry.index);
+
+      return {
+        index: entry.index,
+        surface: entry.surface,
+        aligned: entry.aligned,
+        strongs: tahotToken?.strongs || null,
+        morph: tahotToken?.morph || null,
+        dStrongs: tahotToken?.dStrongs || null,
+        sense: buildTokenSense(tahotToken)
+      };
+    });
 
     return { ...verse, tokens };
   });

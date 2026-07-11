@@ -18,9 +18,18 @@ export function consonantal(text) {
 
 /** Surface form shown in the reader (no slashes, sof pasuq, section marks). */
 export function displaySurface(hebrewField) {
-  return stripCantillation(String(hebrewField || ""))
-    .replace(/[\\/]/g, "")
-    .replace(/\s+/g, "")
+  return cleanTahotSurface(
+    stripCantillation(String(hebrewField || ""))
+      .replace(/[\\/]/g, "")
+      .replace(/\s+/g, "")
+      .trim()
+  );
+}
+
+/** Strip TAHOT layout marks that bleed onto token surfaces (e.g. trailing פ). */
+export function cleanTahotSurface(surface) {
+  return String(surface || "")
+    .replace(/[פס](?=$)/gu, "")
     .trim();
 }
 
