@@ -49,6 +49,34 @@ h1 {
 }
 
 #aliyah-info {
+  opacity: 0;
+  transition: opacity 0.45s ease;
+}
+
+#content {
+  opacity: 0;
+}
+
+body.reading-loaded #aliyah-info {
+  opacity: 1;
+}
+
+body.reading-loaded #content,
+body.reading-animate #content {
+  opacity: 1;
+}
+
+body.reading-animate .word.word-reveal:not(.word-shown)::after {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #aliyah-info {
+    transition: none;
+  }
+}
+
+#aliyah-info {
   text-align: center;
   color: #000;
   font-weight: 600;
@@ -100,6 +128,8 @@ h1 {
   direction: rtl;
   font-size: 1em;
   line-height: 1.5;
+  position: relative;
+  z-index: 0;
 }
 
 .verse-num {
@@ -149,8 +179,22 @@ h1 {
 }
 
 .word.popup-active {
+  background: transparent;
+}
+
+.word.popup-active::after {
+  display: none;
+}
+
+.word.popup-active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
   background: #fff;
-  z-index: 1;
+  z-index: -2;
 }
 
 #popup {
@@ -312,6 +356,197 @@ h1 {
 
 #topBar .segment-tab.unavailable {
   opacity: 0.35;
+}
+
+@media (max-width: 640px) {
+  body {
+    --num-col: 0px;
+    --num-gap: 0px;
+    --text-col: min(600px, calc(100vw - var(--side-padding) - max(24px, env(safe-area-inset-right))));
+    --body-pad-left: max(16px, env(safe-area-inset-left));
+    --body-pad-right: max(16px, env(safe-area-inset-right));
+    max-width: 100%;
+    padding-left: var(--body-pad-left);
+    padding-right: var(--body-pad-right);
+  }
+
+  #topBar .text-column {
+    max-width: none;
+    width: 100%;
+  }
+
+  #controls,
+  #difficultyBar {
+    width: calc(100% + var(--body-pad-left) + var(--body-pad-right));
+    margin-left: calc(-1 * var(--body-pad-left));
+    margin-right: calc(-1 * var(--body-pad-right));
+  }
+
+  #difficultyTabs {
+    max-width: none;
+    width: 100%;
+  }
+
+  body > .text-column {
+    width: 100%;
+    max-width: var(--text-col);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #content {
+    width: 100%;
+    max-width: var(--text-col);
+    margin: 0 auto;
+  }
+
+  .verse {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 36px;
+  }
+
+  .verse-num {
+    grid-column: unset;
+    grid-row: unset;
+    order: unset;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(14px, 3.8vw, 18px);
+    line-height: 1.2;
+    margin-bottom: 10px;
+    transform: none;
+  }
+
+  .hebrew {
+    grid-column: unset;
+    grid-row: unset;
+    width: 100%;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  .english {
+    grid-column: unset;
+    grid-row: unset;
+    width: 100%;
+    text-align: left;
+    margin-top: 10px;
+  }
+
+  .word {
+    padding: 2px 6px;
+  }
+
+  #popup {
+    position: fixed;
+    bottom: 0;
+    top: auto;
+    max-width: none;
+    box-sizing: border-box;
+    padding:
+      20px 20px
+      max(20px, calc(env(safe-area-inset-bottom) + 12px));
+  }
+
+  #aliyah-info {
+    margin: 40px 0 20px;
+  }
+}
+
+/* Desktop preview frame — use ?preview=mobile on a wide screen */
+html.mobile-preview {
+  background: #b8b8b8;
+}
+
+html.mobile-preview body {
+  --num-col: 0px;
+  --num-gap: 0px;
+  --text-col: 358px;
+  --body-pad-left: max(24px, env(safe-area-inset-left));
+  --body-pad-right: max(24px, env(safe-area-inset-right));
+  max-width: 390px;
+  min-height: 100dvh;
+  margin: 24px auto;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 16px 48px rgba(0, 0, 0, 0.18);
+}
+
+html.mobile-preview #topBar .text-column {
+  max-width: none;
+  width: 100%;
+}
+
+html.mobile-preview #controls,
+html.mobile-preview #difficultyBar {
+  width: calc(100% + var(--body-pad-left) + var(--body-pad-right));
+  margin-left: calc(-1 * var(--body-pad-left));
+  margin-right: calc(-1 * var(--body-pad-right));
+}
+
+html.mobile-preview #difficultyTabs {
+  max-width: none;
+  width: 100%;
+}
+
+html.mobile-preview body > .text-column {
+  width: 100%;
+  max-width: var(--text-col);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+html.mobile-preview #content {
+  width: 100%;
+  max-width: var(--text-col);
+  margin: 0 auto;
+}
+
+html.mobile-preview .verse {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 36px;
+}
+
+html.mobile-preview .verse-num {
+  grid-column: unset;
+  grid-row: unset;
+  width: 100%;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.2;
+  margin-bottom: 10px;
+  transform: none;
+}
+
+html.mobile-preview .hebrew {
+  grid-column: unset;
+  grid-row: unset;
+  width: 100%;
+  text-align: right;
+  line-height: 1.5;
+}
+
+html.mobile-preview .english {
+  grid-column: unset;
+  grid-row: unset;
+  width: 100%;
+  text-align: left;
+  margin-top: 10px;
+}
+
+html.mobile-preview #popup {
+  position: fixed;
+  top: auto;
+  bottom: 0;
+  max-width: none;
+  box-sizing: border-box;
+  padding:
+    20px 20px
+    max(20px, calc(env(safe-area-inset-bottom) + 12px));
 }
 
 @media (max-width: 400px) {
