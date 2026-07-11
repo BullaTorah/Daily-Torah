@@ -12,14 +12,76 @@ export function hidePopup() {
   const popup = document.getElementById("popup");
   popup.style.display = "none";
   popup.innerHTML = "";
+  popup.style.top = "";
+  popup.style.left = "";
+  popup.style.right = "";
+  popup.style.bottom = "";
+  popup.style.width = "";
+  popup.style.maxWidth = "";
+  popup.style.transform = "";
   if (activeAnchor) {
     activeAnchor.classList.remove("popup-active");
   }
   activeAnchor = null;
 }
 
+function isDockedPopup() {
+  return (
+    window.matchMedia("(max-width: 640px)").matches ||
+    document.documentElement.classList.contains("mobile-preview")
+  );
+}
+
+function getColumnBounds() {
+  const content = document.getElementById("content");
+  if (!content) return null;
+
+  const rect = content.getBoundingClientRect();
+  if (rect.width > 0) return rect;
+
+  const sample = content.querySelector(".verse");
+  return sample?.getBoundingClientRect() || null;
+}
+
+function positionDockedPopup(popup) {
+  const rect = getColumnBounds();
+
+  popup.style.top = "auto";
+  popup.style.bottom = "0";
+  popup.style.right = "auto";
+  popup.style.transform = "";
+  popup.style.maxWidth = "none";
+  popup.style.boxSizing = "border-box";
+
+  if (rect?.width) {
+    popup.style.left = `${rect.left}px`;
+    popup.style.width = `${rect.width}px`;
+    return;
+  }
+
+  popup.style.left = "50%";
+  popup.style.width = "var(--text-col)";
+  popup.style.transform = "translateX(-50%)";
+}
+
+function scheduleDockedPosition(popup) {
+  positionDockedPopup(popup);
+  requestAnimationFrame(() => positionDockedPopup(popup));
+}
+
 function positionPopup(popup, anchor) {
   popup.style.display = "block";
+
+  if (isDockedPopup()) {
+    scheduleDockedPosition(popup);
+    return;
+  }
+
+  popup.style.transform = "";
+
+  popup.style.right = "auto";
+  popup.style.bottom = "auto";
+  popup.style.width = "";
 
   const rect = anchor.getBoundingClientRect();
   const viewportPadding = 12;
@@ -50,9 +112,10 @@ function positionPopup(popup, anchor) {
   popup.style.left = `${left}px`;
 }
 
-function renderSenseBody(word, sense) {
+function renderSenseBody(surfaceWord, sense) {
+  const displayWord = sense.lemma || surfaceWord;
   const lines = [
-    `<div class="popup-word"><strong>${escapeHtml(word)}</strong></div>`
+    `<div class="popup-word"><strong>${escapeHtml(displayWord)}</strong></div>`
   ];
 
   lines.push(`<div>${escapeHtml(sense.gloss)}</div>`);
@@ -159,10 +222,28 @@ export function initPopupHandlers(onWordClick) {
       const popup = document.getElementById("popup");
       if (popup.style.display !== "block") return;
 
+      if (isDockedPopup()) {
+        positionDockedPopup(popup);
+        return;
+      }
+
       const popupRect = popup.getBoundingClientRect();
       if (popupRect.bottom <= 0) {
         hidePopup();
       }
+    },
+    { passive: true }
+  );
+
+  window.addEventListener(
+    "resize",
+    () => {
+      if (!activeAnchor) return;
+
+      const popup = document.getElementById("popup");
+      if (popup.style.display !== "block" || !isDockedPopup()) return;
+
+      positionDockedPopup(popup);
     },
     { passive: true }
   );

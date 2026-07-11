@@ -49,7 +49,7 @@ export function initSlider(initialValue) {
     container.appendChild(tab);
   });
 
-  setDifficulty(initialValue, { persist: false });
+  setDifficulty(initialValue, { persist: false, rerender: false });
 
   return DIFFICULTY_STEPS;
 }

@@ -1,4 +1,8 @@
-import { initLookup, lookupSenses } from "./core/lookup.js";
+import {
+  initLexicon,
+  lookupSenses,
+  resolveLexiconMode
+} from "./core/lexicon.js";
 import { resolveStoredDifficulty } from "./core/difficulty.js";
 import {
   fetchCalendar,
@@ -138,18 +142,25 @@ async function loadReadingInner() {
   hidePopup();
 
   try {
+    const lexiconMode = resolveLexiconMode();
+
     if (!cachedLexiconData) {
-      const [wordLookup, gloss, frequency] = await Promise.all([
-        loadJSON("data/word-lookup.json"),
+      const [gloss, wordLookup, frequency, tahotFrequency] = await Promise.all([
         loadJSON("data/gloss.json"),
-        loadJSON("data/lemma-frequency.json")
+        loadJSON("data/word-lookup.json"),
+        loadJSON("data/lemma-frequency.json"),
+        loadJSON("data/tahot/frequency.json")
       ]);
-      cachedLexiconData = { wordLookup, gloss, frequency };
+      cachedLexiconData = {
+        gloss,
+        wordLookup,
+        frequency,
+        tahotFrequency
+      };
     }
 
-    const { wordLookup, gloss, frequency } = cachedLexiconData;
-    initLookup(wordLookup, gloss, frequency);
-    initRender(frequency);
+    const { wordLookup, gloss, frequency, tahotFrequency } = cachedLexiconData;
+    initRender();
 
     const calendar = await fetchCalendar(isDiaspora);
     const parsha = findParshaItem(calendar);
@@ -165,7 +176,18 @@ async function loadReadingInner() {
     const aliyahIndex = Math.min(aliyahNumber - 1, aliyot.length - 1);
     const aliyahRef = aliyot[aliyahIndex];
     const textData = await fetchAliyahText(aliyahRef);
-    const verses = normalizeVerses(textData, aliyahRef);
+    let verses = normalizeVerses(textData, aliyahRef);
+
+    verses = await initLexicon({
+      mode: lexiconMode,
+      legacyData: { wordLookup, gloss, frequency },
+      tahotData: {
+        gloss,
+        frequency: tahotFrequency || { byStrongs: {} }
+      },
+      verses,
+      loadJSON
+    });
 
     if (!verses.length) {
       throw new Error("No verses returned for this aliyah.");
@@ -180,13 +202,13 @@ async function loadReadingInner() {
       : resolveStoredDifficulty(getStoredDifficulty(0), 0);
 
     setRenderState({ title, verses, difficulty });
-    render(title, verses);
+    render(title, verses, { animate: true });
 
     if (!sliderInitialized) {
       initSlider(difficulty);
       sliderInitialized = true;
     } else {
-      setDifficulty(difficulty, { persist: false });
+      setDifficulty(difficulty, { persist: false, rerender: false });
     }
   } catch (err) {
     showError(
@@ -197,11 +219,21 @@ async function loadReadingInner() {
 }
 
 isDiaspora = getStoredDiaspora(true);
+
+if (new URLSearchParams(window.location.search).get("preview") === "mobile") {
+  document.documentElement.classList.add("mobile-preview");
+}
+
 initDiasporaToggle();
 initAliyahTabs();
 
 initPopupHandlers((word) => {
-  const { senses } = lookupSenses(word.dataset.word);
+  const { senses } = lookupSenses({
+    word: word.dataset.word,
+    verseRef: word.dataset.verseRef,
+    tokenIndex: Number(word.dataset.tokenIndex),
+    strongs: word.dataset.strongs
+  });
   showPopup({ word: word.dataset.word, senses }, word);
 });
 
