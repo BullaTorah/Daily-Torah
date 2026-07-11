@@ -1,0 +1,11 @@
+{
+  "name": "daily-torah",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:tahot": "node scripts/build-tahot.mjs",
+    "test:tahot": "node --test tests/lookup-tahot.test.mjs",
+    "test:lexicon": "node --test tests/lexicon-phase2.test.mjs",
+    "test": "node --test tests/*.test.mjs"
+  }
+}
