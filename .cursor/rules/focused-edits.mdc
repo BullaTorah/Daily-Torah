@@ -5,33 +5,56 @@ alwaysApply: true
 
 # Focused edits — minimal file exploration
 
+## Hard limits
+
+- **Max proactive reads per turn:** 3 files, unless the user asks for a search/overview or a fix requires tracing one import chain (one hop: caller or callee, not both unless necessary).
+- **No preemptive reads:** Do not open files "for context" before you know what to change.
+- **One batch, one purpose:** Parallel reads are only for files you will edit or that directly define the behavior in question — not for orientation.
+- **Before opening a 4th file:** Stop and state which file you need and why in one line, or ask the user.
+
 ## Default scope
 
 - Only open files **directly needed** for the change the user is discussing.
 - If the user `@`-mentions a file or has one focused in chat, **start there** and treat it as the primary scope.
-- Do **not** broadly explore the repo, run wide searches, or read unrelated modules “to get context” unless the task truly requires it.
-- Prefer **one targeted read** over reading many files. If unsure which file matters, ask — don’t grep the whole project.
+- Do **not** broadly explore the repo, run wide searches, or read unrelated modules "to get context" unless the task truly requires it.
+- Prefer **one targeted read** over reading many files. If unsure which file matters, ask — don't grep the whole project.
 
-## Large data files — read rarely
+## Task-local scope (start here, expand only if stuck)
 
-Do **not** open, read, grep, or search inside these unless the user explicitly asks about lexicon/lookup data or a bug clearly requires inspecting them:
+| Task area | Start with | Add only if needed |
+|-----------|------------|-------------------|
+| Layout / styling | `css/styles.css` | `index.html` or the one JS file that sets the markup/class |
+| Popup | `js/ui/popup.js` | `css/styles.css` |
+| Rendering / loading | `js/ui/render.js` | `js/app.js` |
+| App flow / init | `js/app.js` | The one imported module the task names |
+| Lexicon / lookup | `js/core/lookup.js` or `js/core/lookup-tahot.js` | `js/core/lexicon.js` — not JSON data files |
+| Sefaria / verses | `js/core/sefaria.js` | `js/ui/render.js` |
 
-- `data/word-lookup.json`
-- `data/gloss.json`
-- `data/lemma-frequency.json`
+## Do not open without explicit request
 
-For lookup/lexicon work, use `js/core/lookup.js` and existing APIs instead of opening the JSON blobs.
+- `data/word-lookup.json`, `data/gloss.json`, `data/lemma-frequency.json`
+- `data/tahot/**` (book JSON, frequency, alignment reports)
+- `vendor/**`
+- `scripts/**` (unless the task is build/pipeline)
+- `tests/**` (unless the task is tests or a fix must be verified there)
+- `ARCHITECTURE.md`, `README.md` (unless user asks for docs)
+
+For lookup/lexicon work, use `js/core/lookup.js`, `js/core/lookup-tahot.js`, and existing APIs — not the JSON blobs.
+
+## Large data files
+
+Never open, read, grep, or search inside lexicon/lookup JSON unless the user explicitly asks about that data or a bug cannot be diagnosed from `js/` alone.
 
 ## When exploration is OK
 
-- User asks for architecture overview, refactor across modules, or “find where X is handled”
-- A fix in one file fails and a **single** related import/caller must be checked
+- User asks for architecture overview, refactor across modules, or "find where X is handled"
+- A fix in one file fails and **one** related import/caller must be checked
 - User explicitly says to search the codebase
 
 ## Before opening another file, ask
 
 1. Is this file necessary for the requested change?
-2. Can I answer from what’s already in context?
+2. Can I answer from what's already in context?
 3. Am I about to open a large data file when logic in `js/` would suffice?
 
-If all three suggest “no,” don’t open it.
+If all three suggest "no," don't open it.

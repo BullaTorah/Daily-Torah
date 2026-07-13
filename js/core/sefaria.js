@@ -66,6 +66,14 @@ function parseAliyahStartRef(ref) {
   return { chapter: Number(match[1]), verse: Number(match[2]) };
 }
 
+function resolveBookName(data, aliyahRef) {
+  if (data?.book) return String(data.book).trim();
+  if (data?.title) return String(data.title).trim();
+
+  const fromRef = String(aliyahRef || data?.ref || "").match(/^([1-3]?\s?[A-Za-z]+)/);
+  return fromRef ? fromRef[1].trim() : "Genesis";
+}
+
 function isNestedChapters(chapters) {
   return (
     Array.isArray(chapters) &&
@@ -76,6 +84,7 @@ function isNestedChapters(chapters) {
 
 export function normalizeVerses(data, aliyahRef) {
   const start = parseAliyahStartRef(aliyahRef);
+  const book = resolveBookName(data, aliyahRef);
   const he = data.he || [];
   const en = data.text || [];
   const verses = [];
@@ -85,12 +94,16 @@ export function normalizeVerses(data, aliyahRef) {
 
   chaptersHe.forEach((chapterHe, cIdx) => {
     const chapterEn = chaptersEn[cIdx] || [];
+    const chapter = start.chapter + cIdx;
 
     chapterHe.forEach((verseHe, vIdx) => {
       const verseNum = cIdx === 0 ? start.verse + vIdx : vIdx + 1;
 
       verses.push({
         label: verseNum,
+        chapter,
+        book,
+        ref: `${book}.${chapter}.${verseNum}`,
         he: cleanHebrewText(verseHe),
         en: chapterEn[vIdx] || ""
       });

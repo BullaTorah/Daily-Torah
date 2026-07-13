@@ -1,4 +1,8 @@
-import { initLookup, lookupSenses } from "./core/lookup.js";
+import {
+  initLexicon,
+  lookupSenses,
+  resolveLexiconMode
+} from "./core/lexicon.js";
 import { resolveStoredDifficulty } from "./core/difficulty.js";
 import {
   fetchCalendar,
@@ -10,12 +14,23 @@ import {
   formatAliyahDisplay
 } from "./core/sefaria.js";
 import {
-  getStoredDifficulty,
-  getStoredDiaspora,
-  setStoredDiaspora,
-  getStoredAliyahOverride,
-  setStoredAliyahOverride
-} from "./core/storage.js";
+  initAuth,
+  onAuthStateChange,
+  isLoggedIn
+} from "./core/auth.js";
+import {
+  getUserDifficulty,
+  getUserDiaspora,
+  getUserAliyahOverride,
+  mergeSettingsOnLogin,
+  persistUserSettings,
+  clearCloudSettings
+} from "./core/user-settings.js";
+import {
+  clearProfileCache,
+  loadUserProfile
+} from "./core/profile.js";
+import { loadWordBank, clearWordBank } from "./core/word-bank.js";
 import {
   initRender,
   render,
@@ -26,6 +41,12 @@ import {
 } from "./ui/render.js";
 import { initSlider, setDifficulty, getCurrentDifficulty } from "./ui/slider.js";
 import { initPopupHandlers, showPopup, hidePopup } from "./ui/popup.js";
+import { initAuthPanel } from "./ui/auth-panel.js";
+import {
+  initWordBankPanel,
+  showWordBankPanel,
+  refreshWordBankPanel
+} from "./ui/word-bank-panel.js";
 
 const loadJSON = async (url) => {
   const res = await fetch(url);
@@ -34,12 +55,20 @@ const loadJSON = async (url) => {
 };
 
 const MAX_ALIYAH_TABS = 7;
+const ALIYAH_TAB_BASE_GAP_MS = 100;
+const ALIYAH_TAB_GAP_MULTIPLIER = 1.25;
 
 let isDiaspora = true;
 let sliderInitialized = false;
 let cachedLexiconData = null;
 let loadInFlight = null;
 let currentAliyotCount = MAX_ALIYAH_TABS;
+let aliyahTabAnimTimers = [];
+
+function clearAliyahTabAnimation() {
+  aliyahTabAnimTimers.forEach(clearTimeout);
+  aliyahTabAnimTimers = [];
+}
 
 function getTodayAliyahNumber() {
   return getAliyahIndexForToday() + 1;
@@ -49,7 +78,7 @@ function getActiveAliyahNumber() {
   const query = getAliyahOverrideFromQuery();
   if (query !== null) return query;
 
-  const stored = getStoredAliyahOverride();
+  const stored = getUserAliyahOverride();
   if (stored !== null) return stored;
 
   return getTodayAliyahNumber();
@@ -72,7 +101,7 @@ function initDiasporaToggle() {
   container.querySelectorAll(".segment-tab").forEach((tab) => {
     tab.addEventListener("click", () => {
       isDiaspora = tab.dataset.diaspora === "true";
-      setStoredDiaspora(isDiaspora);
+      persistUserSettings({ diaspora: isDiaspora });
       setDiasporaTabsUI(isDiaspora);
       hidePopup();
       loadReading();
@@ -80,17 +109,64 @@ function initDiasporaToggle() {
   });
 }
 
-function setAliyahTabsUI(activeNumber = getActiveAliyahNumber()) {
+function applyAliyahTabsUI(activeNumber) {
+  const resolvedActive =
+    activeNumber === undefined ? getActiveAliyahNumber() : activeNumber;
+
   document.querySelectorAll("#aliyahTabs .segment-tab").forEach((tab) => {
     const number = Number(tab.dataset.aliyah);
     const available = number <= currentAliyotCount;
-    const active = available && number === activeNumber;
+    const active =
+      resolvedActive !== null && available && number === resolvedActive;
 
     tab.disabled = !available;
     tab.classList.toggle("unavailable", !available);
     tab.classList.toggle("active", active);
     tab.setAttribute("aria-selected", active ? "true" : "false");
   });
+}
+
+function clearAliyahTabsHighlight() {
+  applyAliyahTabsUI(null);
+}
+
+function animateAliyahTabs(targetNumber) {
+  clearAliyahTabAnimation();
+
+  const finalNumber = Math.min(
+    Math.max(1, targetNumber),
+    currentAliyotCount || MAX_ALIYAH_TABS
+  );
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    applyAliyahTabsUI(finalNumber);
+    return;
+  }
+
+  applyAliyahTabsUI(1);
+
+  if (finalNumber <= 1) return;
+
+  let delay = 0;
+  let gap = ALIYAH_TAB_BASE_GAP_MS;
+
+  for (let step = 2; step <= finalNumber; step += 1) {
+    delay += gap;
+    aliyahTabAnimTimers.push(
+      setTimeout(() => applyAliyahTabsUI(step), delay)
+    );
+    gap *= ALIYAH_TAB_GAP_MULTIPLIER;
+  }
+}
+
+function setAliyahTabsUI(activeNumber = getActiveAliyahNumber(), { animate = false } = {}) {
+  if (animate) {
+    animateAliyahTabs(activeNumber);
+    return;
+  }
+
+  clearAliyahTabAnimation();
+  applyAliyahTabsUI(activeNumber);
 }
 
 function initAliyahTabs() {
@@ -108,19 +184,18 @@ function initAliyahTabs() {
       if (i > currentAliyotCount) return;
 
       if (i === getTodayAliyahNumber()) {
-        setStoredAliyahOverride(null);
+        persistUserSettings({ aliyah_override: null });
       } else {
-        setStoredAliyahOverride(i);
+        persistUserSettings({ aliyah_override: i });
       }
 
-      setAliyahTabsUI();
       hidePopup();
       loadReading();
     });
     container.appendChild(tab);
   }
 
-  setAliyahTabsUI();
+  clearAliyahTabsHighlight();
 }
 
 async function loadReading() {
@@ -134,22 +209,31 @@ async function loadReading() {
 }
 
 async function loadReadingInner() {
+  clearAliyahTabAnimation();
+  clearAliyahTabsHighlight();
   showLoading();
   hidePopup();
 
   try {
+    const lexiconMode = resolveLexiconMode();
+
     if (!cachedLexiconData) {
-      const [wordLookup, gloss, frequency] = await Promise.all([
-        loadJSON("data/word-lookup.json"),
+      const [gloss, wordLookup, frequency, tahotFrequency] = await Promise.all([
         loadJSON("data/gloss.json"),
-        loadJSON("data/lemma-frequency.json")
+        loadJSON("data/word-lookup.json"),
+        loadJSON("data/lemma-frequency.json"),
+        loadJSON("data/tahot/frequency.json")
       ]);
-      cachedLexiconData = { wordLookup, gloss, frequency };
+      cachedLexiconData = {
+        gloss,
+        wordLookup,
+        frequency,
+        tahotFrequency
+      };
     }
 
-    const { wordLookup, gloss, frequency } = cachedLexiconData;
-    initLookup(wordLookup, gloss, frequency);
-    initRender(frequency);
+    const { wordLookup, gloss, frequency, tahotFrequency } = cachedLexiconData;
+    initRender();
 
     const calendar = await fetchCalendar(isDiaspora);
     const parsha = findParshaItem(calendar);
@@ -165,7 +249,18 @@ async function loadReadingInner() {
     const aliyahIndex = Math.min(aliyahNumber - 1, aliyot.length - 1);
     const aliyahRef = aliyot[aliyahIndex];
     const textData = await fetchAliyahText(aliyahRef);
-    const verses = normalizeVerses(textData, aliyahRef);
+    let verses = normalizeVerses(textData, aliyahRef);
+
+    verses = await initLexicon({
+      mode: lexiconMode,
+      legacyData: { wordLookup, gloss, frequency },
+      tahotData: {
+        gloss,
+        frequency: tahotFrequency || { byStrongs: {} }
+      },
+      verses,
+      loadJSON
+    });
 
     if (!verses.length) {
       throw new Error("No verses returned for this aliyah.");
@@ -173,20 +268,20 @@ async function loadReadingInner() {
 
     const title = parsha.displayValue.en;
     updateAliyahInfo(formatAliyahDisplay(aliyahRef));
-    setAliyahTabsUI(aliyahNumber);
+    setAliyahTabsUI(aliyahNumber, { animate: true });
 
     const difficulty = sliderInitialized
       ? getCurrentDifficulty()
-      : resolveStoredDifficulty(getStoredDifficulty(0), 0);
+      : resolveStoredDifficulty(getUserDifficulty(0), 0);
 
     setRenderState({ title, verses, difficulty });
-    render(title, verses);
+    render(title, verses, { animate: true });
 
     if (!sliderInitialized) {
       initSlider(difficulty);
       sliderInitialized = true;
     } else {
-      setDifficulty(difficulty, { persist: false });
+      setDifficulty(difficulty, { persist: false, rerender: false });
     }
   } catch (err) {
     showError(
@@ -196,13 +291,84 @@ async function loadReadingInner() {
   }
 }
 
-isDiaspora = getStoredDiaspora(true);
-initDiasporaToggle();
-initAliyahTabs();
+async function applySessionSettings() {
+  isDiaspora = getUserDiaspora(true);
+  setDiasporaTabsUI(isDiaspora);
 
-initPopupHandlers((word) => {
-  const { senses } = lookupSenses(word.dataset.word);
-  showPopup({ word: word.dataset.word, senses }, word);
-});
+  const difficulty = resolveStoredDifficulty(getUserDifficulty(0), 0);
 
-loadReading();
+  if (sliderInitialized) {
+    setDifficulty(difficulty, { persist: false });
+  }
+
+  setAliyahTabsUI(null, { animate: false });
+}
+
+async function handleAuthChange(session) {
+  if (session) {
+    try {
+      await loadUserProfile();
+      await mergeSettingsOnLogin();
+      await loadWordBank();
+    } catch {
+      /* keep local settings on sync failure */
+    }
+  } else {
+    clearCloudSettings();
+    clearWordBank();
+    clearProfileCache();
+  }
+
+  await applySessionSettings();
+  refreshWordBankPanel();
+  loadReading();
+}
+
+async function bootstrap() {
+  if (new URLSearchParams(window.location.search).get("preview") === "mobile") {
+    document.documentElement.classList.add("mobile-preview");
+  }
+
+  await initAuth();
+
+  initAuthPanel({
+    onOpenWordBank: () => showWordBankPanel()
+  });
+  initWordBankPanel();
+
+  onAuthStateChange((session, event) => {
+    if (event && event !== "SIGNED_IN" && event !== "SIGNED_OUT") {
+      return;
+    }
+    handleAuthChange(session);
+  });
+
+  if (isLoggedIn()) {
+    try {
+      await loadUserProfile();
+      await mergeSettingsOnLogin();
+      await loadWordBank();
+    } catch {
+      /* guest fallback */
+    }
+  }
+
+  isDiaspora = getUserDiaspora(true);
+
+  initDiasporaToggle();
+  initAliyahTabs();
+
+  initPopupHandlers((word) => {
+    const { senses } = lookupSenses({
+      word: word.dataset.word,
+      verseRef: word.dataset.verseRef,
+      tokenIndex: Number(word.dataset.tokenIndex),
+      strongs: word.dataset.strongs
+    });
+    showPopup({ word: word.dataset.word, senses }, word);
+  });
+
+  loadReading();
+}
+
+bootstrap();

@@ -78,16 +78,20 @@ function stripSefariaFootnotes(text) {
     .replace(/<i[^>]*class=["']footnote["'][^>]*>[\s\S]*?<\/i>/gi, "");
 }
 
-function stripHtml(text) {
+function decodeHtmlEntities(text) {
   return String(text || "")
-    .replace(/<[^>]*>/g, "")
     .replace(/&nbsp;/gi, " ")
+    .replace(/&(?:thinsp|ensp|emsp|zwnj|zwj|#160|#8201|#8194|#8195);/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/&lt;/gi, "<")
     .replace(/&gt;/gi, ">")
     .replace(/&quot;/gi, '"')
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
     .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)));
+}
+
+function stripHtml(text) {
+  return decodeHtmlEntities(String(text || "").replace(/<[^>]*>/g, ""));
 }
 
 function stripParentheses(text) {
@@ -129,6 +133,7 @@ export function cleanHebrewText(text) {
   cleaned = stripEditorialNotes(cleaned);
   cleaned = stripCantillation(cleaned);
   cleaned = cleaned.replace(/[a-zA-Z*]/g, "");
+  cleaned = cleaned.replace(/&+/g, " ");
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
   return cleaned;
@@ -160,6 +165,7 @@ function buildSense(strongs) {
 
   return {
     strongs: id,
+    lemma: entry?.lemma || null,
     gloss: entry?.gloss || "—",
     pron: entry?.pron || null,
     rank: freq?.rank ?? null

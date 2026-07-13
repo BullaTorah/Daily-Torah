@@ -17,9 +17,19 @@ js/
     slider.js         # Pointer-based difficulty slider
     popup.js          # Word definition popup
 data/
-  word-lookup.json    # Surface form → Strong's number
-  gloss.json          # Strong's → lemma, gloss, xlit, pron
+  word-lookup.json    # Surface form → Strong's number (legacy)
+  gloss.json          # Strong's → lemma, gloss, xlit, pron (legacy)
   lemma-frequency.json
+  tahot/              # Generated from STEPBible TAHOT (see npm run build:tahot)
+    torah-verses.json
+    books/              # Per-book shards (loaded on demand)
+    frequency.json
+    alignment-report.json
+js/core/
+    lookup.js         # Legacy runtime lookup
+    lookup-tahot.js   # TAHOT verse-level lookup
+    lexicon.js        # Mode facade (?lexicon=tahot|legacy)
+    tahot-align.js    # Sefaria ↔ TAHOT token alignment
 ```
 
 The `core/` modules contain pure logic with no DOM dependencies. They can be extracted into a shared package without changes to their APIs.

@@ -1,5 +1,5 @@
 import { DIFFICULTY_STEPS } from "../core/difficulty.js";
-import { setStoredDifficulty } from "../core/storage.js";
+import { persistUserSettings } from "../core/user-settings.js";
 import { rerenderCurrent, setRenderState } from "./render.js";
 
 let currentDifficulty = 0;
@@ -21,7 +21,7 @@ export function setDifficulty(value, { persist = true, rerender = true } = {}) {
   setRenderState({ difficulty: value });
 
   if (persist) {
-    setStoredDifficulty(value);
+    persistUserSettings({ difficulty: value });
   }
 
   updateTabUI(value);
@@ -49,7 +49,7 @@ export function initSlider(initialValue) {
     container.appendChild(tab);
   });
 
-  setDifficulty(initialValue, { persist: false });
+  setDifficulty(initialValue, { persist: false, rerender: false });
 
   return DIFFICULTY_STEPS;
 }
