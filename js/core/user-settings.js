@@ -3,8 +3,6 @@ import {
   setStoredDifficulty,
   getStoredDiaspora,
   setStoredDiaspora,
-  getStoredAliyahOverride,
-  setStoredAliyahOverride,
   getStoredLexiconMode,
   setStoredLexiconMode
 } from "./storage.js";
@@ -13,8 +11,7 @@ import { getSupabase, getUser, isLoggedIn } from "./auth.js";
 const DEFAULTS = {
   difficulty: 0,
   diaspora: true,
-  lexicon_mode: "tahot",
-  aliyah_override: null
+  lexicon_mode: "tahot"
 };
 
 let cloudSettings = null;
@@ -25,8 +22,7 @@ function readLocalSettings() {
   return {
     difficulty: getStoredDifficulty(DEFAULTS.difficulty),
     diaspora: getStoredDiaspora(DEFAULTS.diaspora),
-    lexicon_mode: getStoredLexiconMode(DEFAULTS.lexicon_mode),
-    aliyah_override: getStoredAliyahOverride()
+    lexicon_mode: getStoredLexiconMode(DEFAULTS.lexicon_mode)
   };
 }
 
@@ -34,20 +30,13 @@ function writeLocalSettings(settings) {
   setStoredDifficulty(settings.difficulty);
   setStoredDiaspora(settings.diaspora);
   setStoredLexiconMode(settings.lexicon_mode);
-
-  if (settings.aliyah_override == null) {
-    setStoredAliyahOverride(null);
-  } else {
-    setStoredAliyahOverride(settings.aliyah_override);
-  }
 }
 
 function isDefaultSettings(settings) {
   return (
     settings.difficulty === DEFAULTS.difficulty &&
     settings.diaspora === DEFAULTS.diaspora &&
-    settings.lexicon_mode === DEFAULTS.lexicon_mode &&
-    (settings.aliyah_override == null || settings.aliyah_override === DEFAULTS.aliyah_override)
+    settings.lexicon_mode === DEFAULTS.lexicon_mode
   );
 }
 
@@ -61,9 +50,7 @@ function normalizeCloudRow(row) {
   return {
     difficulty: Number(row.difficulty) || 0,
     diaspora: Boolean(row.diaspora),
-    lexicon_mode: row.lexicon_mode === "legacy" ? "legacy" : "tahot",
-    aliyah_override:
-      row.aliyah_override == null ? null : Number(row.aliyah_override)
+    lexicon_mode: row.lexicon_mode === "legacy" ? "legacy" : "tahot"
   };
 }
 
@@ -89,13 +76,6 @@ export function getUserLexiconMode(defaultValue = DEFAULTS.lexicon_mode) {
   return mode === "legacy" ? "legacy" : defaultValue;
 }
 
-export function getUserAliyahOverride() {
-  const value = getEffectiveSettings().aliyah_override;
-  if (value == null) return null;
-  const num = Number(value);
-  return Number.isFinite(num) && num >= 1 ? num : null;
-}
-
 async function upsertCloudSettings(settings) {
   const supabase = getSupabase();
   const user = getUser();
@@ -107,7 +87,7 @@ async function upsertCloudSettings(settings) {
     difficulty: settings.difficulty,
     diaspora: settings.diaspora,
     lexicon_mode: settings.lexicon_mode,
-    aliyah_override: settings.aliyah_override,
+    aliyah_override: null,
     updated_at: new Date().toISOString()
   };
 
@@ -131,8 +111,9 @@ function scheduleCloudSave() {
 }
 
 export function persistUserSettings(patch = {}) {
+  const { aliyah_override: _ignored, ...rest } = patch;
   const current = readLocalSettings();
-  const next = { ...current, ...patch };
+  const next = { ...current, ...rest };
 
   writeLocalSettings(next);
 
@@ -155,7 +136,7 @@ export async function mergeSettingsOnLogin() {
 
   const { data, error } = await supabase
     .from("user_settings")
-    .select("difficulty, diaspora, lexicon_mode, aliyah_override")
+    .select("difficulty, diaspora, lexicon_mode")
     .eq("user_id", user.id)
     .maybeSingle();
 

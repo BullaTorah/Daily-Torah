@@ -21,7 +21,6 @@ import {
 import {
   getUserDifficulty,
   getUserDiaspora,
-  getUserAliyahOverride,
   mergeSettingsOnLogin,
   persistUserSettings,
   clearCloudSettings
@@ -64,6 +63,15 @@ let cachedLexiconData = null;
 let loadInFlight = null;
 let currentAliyotCount = MAX_ALIYAH_TABS;
 let aliyahTabAnimTimers = [];
+let sessionAliyahOverride = null;
+
+function clearLegacyAliyahOverride() {
+  try {
+    localStorage.removeItem("torah-reader:aliyah-override");
+  } catch {
+    /* ignore */
+  }
+}
 
 function clearAliyahTabAnimation() {
   aliyahTabAnimTimers.forEach(clearTimeout);
@@ -78,8 +86,7 @@ function getActiveAliyahNumber() {
   const query = getAliyahOverrideFromQuery();
   if (query !== null) return query;
 
-  const stored = getUserAliyahOverride();
-  if (stored !== null) return stored;
+  if (sessionAliyahOverride !== null) return sessionAliyahOverride;
 
   return getTodayAliyahNumber();
 }
@@ -184,9 +191,9 @@ function initAliyahTabs() {
       if (i > currentAliyotCount) return;
 
       if (i === getTodayAliyahNumber()) {
-        persistUserSettings({ aliyah_override: null });
+        sessionAliyahOverride = null;
       } else {
-        persistUserSettings({ aliyah_override: i });
+        sessionAliyahOverride = i;
       }
 
       hidePopup();
@@ -325,6 +332,8 @@ async function handleAuthChange(session) {
 }
 
 async function bootstrap() {
+  clearLegacyAliyahOverride();
+
   if (new URLSearchParams(window.location.search).get("preview") === "mobile") {
     document.documentElement.classList.add("mobile-preview");
   }

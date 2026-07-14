@@ -1,7 +1,6 @@
 const KEYS = {
   difficulty: "torah-reader:difficulty",
   diaspora: "torah-reader:diaspora",
-  aliyahOverride: "torah-reader:aliyah-override",
   lexiconMode: "torah-reader:lexicon"
 };
 
@@ -37,30 +36,6 @@ export function getStoredDiaspora(defaultValue = true) {
 export function setStoredDiaspora(isDiaspora) {
   try {
     localStorage.setItem(KEYS.diaspora, isDiaspora ? "1" : "0");
-  } catch {
-    /* ignore */
-  }
-}
-
-export function getStoredAliyahOverride() {
-  try {
-    const raw = localStorage.getItem(KEYS.aliyahOverride);
-    if (raw === null) return null;
-    const value = Number(raw);
-    if (!Number.isFinite(value) || value < 1) return null;
-    return value;
-  } catch {
-    return null;
-  }
-}
-
-export function setStoredAliyahOverride(aliyahNumber) {
-  try {
-    if (aliyahNumber === null || aliyahNumber === undefined) {
-      localStorage.removeItem(KEYS.aliyahOverride);
-    } else {
-      localStorage.setItem(KEYS.aliyahOverride, String(aliyahNumber));
-    }
   } catch {
     /* ignore */
   }
