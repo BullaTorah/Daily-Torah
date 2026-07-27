@@ -141,6 +141,10 @@ body.reading-animate #content {
   opacity: 1;
 }
 
+body.reading-animate .word.word-reveal:not(.word-shown) {
+  text-decoration: none;
+}
+
 body.reading-animate .word.word-reveal:not(.word-shown)::after {
   display: none;
 }
@@ -259,31 +263,53 @@ body.reading-animate .word.word-reveal:not(.word-shown)::after {
   padding: 0 5px;
 }
 
-.word.no-highlight {
-  cursor: inherit;
-}
-
-.word.no-highlight::after {
-  display: none;
-}
-
-.word::after {
+.word:not(.no-highlight)::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  height: calc(0.38em + 4px);
-  background: rgba(210, 193, 142, 0.3);
+  top: calc(1em + 0.28em + 3px);
+  height: 3px;
+  background: var(--english-color);
+  pointer-events: none;
   z-index: -1;
+}
+
+.word.no-highlight {
+  cursor: inherit;
+}
+
+/* Pseudo-element fills are often dropped under forced-colors / high contrast. */
+@media (forced-colors: active) {
+  .word:not(.no-highlight) {
+    text-decoration: underline;
+    text-decoration-thickness: 3px;
+    text-underline-offset: calc(0.28em + 3px);
+    text-decoration-color: LinkText;
+    text-decoration-skip-ink: none;
+  }
+
+  .word:not(.no-highlight)::after {
+    display: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .word:not(.no-highlight) {
+    text-decoration: underline;
+    text-decoration-thickness: 4px;
+    text-underline-offset: calc(0.28em + 3px);
+    text-decoration-color: #3d2f14;
+    text-decoration-skip-ink: none;
+  }
+
+  .word:not(.no-highlight)::after {
+    display: none;
+  }
 }
 
 .word.popup-active {
   background: transparent;
-}
-
-.word.popup-active::after {
-  display: none;
 }
 
 .word.popup-active::before {
