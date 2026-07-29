@@ -31,6 +31,10 @@ import {
 } from "./core/profile.js";
 import { loadWordBank, clearWordBank } from "./core/word-bank.js";
 import {
+  loadDailyVocabPractice,
+  shouldOfferDailyVocab
+} from "./core/daily-vocab.js";
+import {
   initRender,
   render,
   showLoading,
@@ -46,6 +50,13 @@ import {
   showWordBankPanel,
   refreshWordBankPanel
 } from "./ui/word-bank-panel.js";
+import {
+  initDailyVocabOverlay,
+  showDailyVocabLoading,
+  showDailyVocabOverlay,
+  showDailyVocabError,
+  hideDailyVocabOverlay
+} from "./ui/daily-vocab-overlay.js";
 
 const loadJSON = async (url) => {
   const res = await fetch(url);
@@ -64,6 +75,7 @@ let loadInFlight = null;
 let currentAliyotCount = MAX_ALIYAH_TABS;
 let aliyahTabAnimTimers = [];
 let sessionAliyahOverride = null;
+let dailyVocabOfferedThisSession = false;
 
 function clearLegacyAliyahOverride() {
   try {
@@ -290,10 +302,35 @@ async function loadReadingInner() {
     } else {
       setDifficulty(difficulty, { persist: false, rerender: false });
     }
+
+    maybeOfferDailyVocab();
   } catch (err) {
     showError(
       err.message || "Something went wrong while loading today's reading.",
       loadReading
+    );
+  }
+}
+
+async function maybeOfferDailyVocab() {
+  if (dailyVocabOfferedThisSession) return;
+  if (!isLoggedIn() || !shouldOfferDailyVocab()) return;
+
+  dailyVocabOfferedThisSession = true;
+  showDailyVocabLoading();
+
+  try {
+    const practice = await loadDailyVocabPractice();
+
+    if (!practice?.items?.length) {
+      hideDailyVocabOverlay();
+      return;
+    }
+
+    showDailyVocabOverlay(practice);
+  } catch (err) {
+    showDailyVocabError(
+      err.message || "Could not load today’s vocabulary practice."
     );
   }
 }
@@ -344,10 +381,17 @@ async function bootstrap() {
     onOpenWordBank: () => showWordBankPanel()
   });
   initWordBankPanel();
+  initDailyVocabOverlay();
 
   onAuthStateChange((session, event) => {
     if (event && event !== "SIGNED_IN" && event !== "SIGNED_OUT") {
       return;
+    }
+    if (event === "SIGNED_IN") {
+      dailyVocabOfferedThisSession = false;
+    }
+    if (event === "SIGNED_OUT") {
+      hideDailyVocabOverlay();
     }
     handleAuthChange(session);
   });

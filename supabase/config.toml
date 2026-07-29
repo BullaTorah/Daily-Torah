@@ -1,0 +1,5 @@
+# Supabase local/project config for Edge Functions
+# https://supabase.com/docs/guides/functions
+
+[functions.daily-vocab]
+verify_jwt = true

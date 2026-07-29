@@ -45,6 +45,13 @@ function isDockedPopup() {
 }
 
 function getColumnBounds() {
+  if (activeAnchor?.closest("#dailyVocabList")) {
+    const host = activeAnchor.closest(".daily-vocab-verse-host") ||
+      document.getElementById("dailyVocabList");
+    const rect = host?.getBoundingClientRect();
+    if (rect?.width) return rect;
+  }
+
   const content = document.getElementById("content");
   if (!content) return null;
 
@@ -125,6 +132,7 @@ function positionPopup(popup, anchor) {
 }
 
 function renderWordBankButton(surfaceWord, sense) {
+  if (activeAnchor?.closest("#dailyVocabPanel")) return "";
   if (!isAuthConfigured() || !sense.strongs) return "";
 
   const saved = isWordSaved(sense.strongs);
@@ -276,6 +284,13 @@ export function initPopupHandlers(onWordClick) {
   onWordBankChange(() => refreshOpenPopup());
 
   document.getElementById("content").addEventListener("click", (e) => {
+    const word = e.target.closest(".word");
+    if (!word || word.classList.contains("no-highlight")) return;
+
+    onWordClick(word);
+  });
+
+  document.getElementById("dailyVocabList")?.addEventListener("click", (e) => {
     const word = e.target.closest(".word");
     if (!word || word.classList.contains("no-highlight")) return;
 

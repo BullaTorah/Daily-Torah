@@ -108,10 +108,24 @@ export function getGlobalVerses() {
   return globalVerses;
 }
 
-function renderHebrew(verse, { animate = false, wordOffset = 0 } = {}) {
+function renderHebrew(verse, {
+  animate = false,
+  wordOffset = 0,
+  forceHighlightStrongs = null,
+  forceHighlightSurface = null
+} = {}) {
   const container = document.createElement("span");
   const parts = tokenizeHebrewVerse(verse.he);
   let revealIndex = wordOffset;
+  const forceId = forceHighlightStrongs
+    ? String(forceHighlightStrongs).replace(/\D/g, "")
+    : null;
+  const forceSurfacePlain = forceHighlightSurface
+    ? String(forceHighlightSurface)
+        .normalize("NFD")
+        .replace(/[\u0591-\u05C7]/g, "")
+        .replace(/[^\u05D0-\u05EA]/g, "")
+    : "";
 
   parts.forEach((token, index) => {
     const tokenMeta = verse.tokens?.[index] ?? null;
@@ -122,7 +136,30 @@ function renderHebrew(verse, { animate = false, wordOffset = 0 } = {}) {
       strongs: tokenMeta?.strongs ?? null
     });
     const rank = sense.rank ?? 0;
-    const hide = shouldHideWord(rank, currentDifficulty);
+    const tokenStrongs = String(sense.strongs || tokenMeta?.strongs || "").replace(
+      /\D/g,
+      ""
+    );
+    const tokenPlain = String(token)
+      .normalize("NFD")
+      .replace(/[\u0591-\u05C7]/g, "")
+      .replace(/[^\u05D0-\u05EA]/g, "");
+    const isTargetByStrongs =
+      forceId &&
+      tokenStrongs &&
+      (tokenStrongs === forceId ||
+        tokenStrongs.replace(/^0+/, "") === forceId.replace(/^0+/, ""));
+    const isTargetBySurface =
+      forceSurfacePlain &&
+      tokenPlain &&
+      (tokenPlain === forceSurfacePlain ||
+        tokenPlain.includes(forceSurfacePlain) ||
+        forceSurfacePlain.includes(tokenPlain));
+    const isTarget = Boolean(isTargetByStrongs || isTargetBySurface);
+    const hide =
+      forceId || forceSurfacePlain
+        ? !isTarget
+        : shouldHideWord(rank, currentDifficulty);
 
     const el = document.createElement("span");
     el.className = hide ? "word no-highlight" : "word";
@@ -131,7 +168,9 @@ function renderHebrew(verse, { animate = false, wordOffset = 0 } = {}) {
       el.dataset.word = token;
       if (verse.ref) el.dataset.verseRef = verse.ref;
       el.dataset.tokenIndex = String(index + 1);
-      if (sense.strongs) el.dataset.strongs = sense.strongs;
+      if (sense.strongs || tokenMeta?.strongs || forceId) {
+        el.dataset.strongs = sense.strongs || tokenMeta?.strongs || forceId;
+      }
     }
 
     if (animate) {
@@ -241,6 +280,35 @@ export function render(title, verses, { animate = false } = {}) {
 
   document.body.classList.remove("reading-animate");
   document.body.classList.add("reading-loaded");
+}
+
+/** Render one verse-like block into a container (daily vocab practice). */
+export function renderPracticeVerse(container, verse, {
+  forceHighlightStrongs = null,
+  forceHighlightSurface = null
+} = {}) {
+  if (!container || !verse) return;
+
+  container.innerHTML = "";
+
+  const row = document.createElement("div");
+  row.className = "verse daily-vocab-verse";
+
+  const he = document.createElement("div");
+  he.className = "hebrew";
+  const hebrew = renderHebrew(verse, {
+    forceHighlightStrongs,
+    forceHighlightSurface
+  });
+  he.appendChild(hebrew.container);
+
+  const en = document.createElement("div");
+  en.className = "english";
+  en.textContent = stripSefariaArtifacts(verse.en);
+
+  row.appendChild(he);
+  row.appendChild(en);
+  container.appendChild(row);
 }
 
 export function showLoading() {

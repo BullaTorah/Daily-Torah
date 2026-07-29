@@ -126,6 +126,49 @@ export function buildFrequency(tokens) {
   return { ranked, byStrongs };
 }
 
+/** Reverse index: Strong's → capped list of verse refs (prefer shorter + book diversity). */
+export function buildStrongsVerses(tokens, verses, { cap = 6 } = {}) {
+  const byStrongs = new Map();
+  const lengths = new Map();
+
+  for (const [ref, verseTokens] of Object.entries(verses)) {
+    lengths.set(ref, verseTokens.length);
+  }
+
+  for (const token of tokens) {
+    if (!token.strongs || !token.verseRef) continue;
+    if (!byStrongs.has(token.strongs)) byStrongs.set(token.strongs, new Set());
+    byStrongs.get(token.strongs).add(token.verseRef);
+  }
+
+  const out = {};
+  for (const [strongs, refs] of byStrongs) {
+    const sorted = [...refs].sort(
+      (a, b) => (lengths.get(a) || 99) - (lengths.get(b) || 99)
+    );
+    const picked = [];
+    const usedBooks = new Set();
+
+    for (const ref of sorted) {
+      if (picked.length >= cap) break;
+      const book = ref.split(".")[0];
+      if (!usedBooks.has(book) || picked.length < Math.min(3, cap)) {
+        picked.push(ref);
+        usedBooks.add(book);
+      }
+    }
+
+    for (const ref of sorted) {
+      if (picked.length >= cap) break;
+      if (!picked.includes(ref)) picked.push(ref);
+    }
+
+    out[strongs] = picked;
+  }
+
+  return out;
+}
+
 export function buildReport(tokens, verses) {
   const byBook = {};
   const byTextType = {};

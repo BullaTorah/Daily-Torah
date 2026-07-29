@@ -109,6 +109,23 @@
   </div>
 </div>
 
+<div id="dailyVocabPanel" class="daily-vocab-panel" hidden>
+  <div class="daily-vocab-backdrop" data-daily-vocab-close></div>
+  <div class="daily-vocab-card" role="dialog" aria-labelledby="dailyVocabTitle" aria-modal="true">
+    <p id="dailyVocabStatus" class="daily-vocab-status" hidden></p>
+    <div class="daily-vocab-header">
+      <h2 id="dailyVocabTitle">Today’s practice</h2>
+      <button type="button" class="daily-vocab-close" data-daily-vocab-close aria-label="Close">×</button>
+    </div>
+    <p class="daily-vocab-lead">Practice reading your saved words in simple biblical sentences.</p>
+    <div id="dailyVocabList" class="daily-vocab-list"></div>
+    <div class="daily-vocab-footer">
+      <button type="button" id="dailyVocabPrevBtn" class="daily-vocab-prev-btn" hidden>Previous</button>
+      <button type="button" id="dailyVocabNextBtn" class="daily-vocab-next-btn" hidden>Next</button>
+    </div>
+  </div>
+</div>
+
 <script type="module" src="js/app.js"></script>
 
 </body>

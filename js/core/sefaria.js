@@ -61,9 +61,49 @@ export function findParshaItem(calendar) {
 }
 
 function parseAliyahStartRef(ref) {
-  const match = String(ref || "").match(/(\d+):(\d+)/);
+  const match = String(ref || "").match(/(\d+)[:.](\d+)/);
   if (!match) return { chapter: 1, verse: 1 };
   return { chapter: Number(match[1]), verse: Number(match[2]) };
+}
+
+function unwrapText(value) {
+  let current = value;
+  while (Array.isArray(current)) {
+    if (!current.length) return "";
+    current = current[0];
+  }
+  return current == null ? "" : String(current);
+}
+
+/** Fetch a single verse (Hebrew + English) by dotted/colon ref. */
+export async function fetchVerseText(verseRef) {
+  const formatted = formatAliyahRef(verseRef);
+  const res = await fetch(
+    `https://www.sefaria.org/api/texts/${formatted}?context=0&pad=0`
+  );
+  if (!res.ok) throw new Error(`Text fetch failed (${res.status})`);
+  const data = await res.json();
+  return normalizeSingleVerse(data, verseRef);
+}
+
+export function normalizeSingleVerse(data, verseRef) {
+  const dotted = formatAliyahRef(verseRef);
+  const parts = dotted.split(".");
+  const book = resolveBookName(data, verseRef);
+  const start = parseAliyahStartRef(
+    parts.length >= 3 ? `${parts[1]}:${parts[2]}` : verseRef
+  );
+  const chapter = start.chapter;
+  const verseNum = start.verse;
+
+  return {
+    label: verseNum,
+    chapter,
+    book,
+    ref: `${book}.${chapter}.${verseNum}`,
+    he: cleanHebrewText(unwrapText(data.he)),
+    en: unwrapText(data.text)
+  };
 }
 
 function resolveBookName(data, aliyahRef) {

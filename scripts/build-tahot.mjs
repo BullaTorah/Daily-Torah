@@ -9,6 +9,7 @@
  * Output:
  *   data/tahot/torah-verses.json
  *   data/tahot/frequency.json
+ *   data/tahot/strongs-verses.json
  *   data/tahot/alignment-report.json
  */
 
@@ -20,6 +21,7 @@ import {
   parseTahotFile,
   buildVerseIndex,
   buildFrequency,
+  buildStrongsVerses,
   buildReport
 } from "./lib/parse-tahot.mjs";
 
@@ -77,12 +79,14 @@ async function main() {
   const tokens = [...parseTahotFile(content)];
   const verses = buildVerseIndex(tokens);
   const frequency = buildFrequency(tokens);
+  const strongsVerses = buildStrongsVerses(tokens, verses);
   const report = buildReport(tokens, verses);
 
   await mkdir(OUT_DIR, { recursive: true });
 
   const versesPath = join(OUT_DIR, "torah-verses.json");
   const freqPath = join(OUT_DIR, "frequency.json");
+  const strongsVersesPath = join(OUT_DIR, "strongs-verses.json");
   const reportPath = join(OUT_DIR, "alignment-report.json");
 
   await writeFile(versesPath, JSON.stringify(verses), "utf8");
@@ -96,6 +100,7 @@ async function main() {
     }),
     "utf8"
   );
+  await writeFile(strongsVersesPath, JSON.stringify(strongsVerses), "utf8");
   await writeFile(reportPath, JSON.stringify(report, null, 2), "utf8");
 
   const booksDir = join(OUT_DIR, "books");
@@ -124,6 +129,8 @@ async function main() {
   console.log(`  tokens: ${report.totals.tokens}`);
   console.log(`Wrote ${freqPath}`);
   console.log(`  unique strongs: ${frequency.ranked.length}`);
+  console.log(`Wrote ${strongsVersesPath}`);
+  console.log(`  indexed strongs: ${Object.keys(strongsVerses).length}`);
   console.log(`Wrote ${reportPath}`);
 }
 
