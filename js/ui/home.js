@@ -1,4 +1,4 @@
-import { isLoggedIn } from "../core/auth.js";
+import { isLoggedIn, signOut } from "../core/auth.js";
 import { countLearnedWords, onLearnedWordsChange, onWordBankChange } from "../core/word-bank.js";
 import { getWeeklyFlashLabel } from "../core/weekly-flashcards.js";
 import {
@@ -23,6 +23,7 @@ function els() {
   return {
     overlay: document.getElementById("homeOverlay"),
     signInBtn: document.getElementById("homeSignInBtn"),
+    signOutBtn: document.getElementById("homeSignOutBtn"),
     walkthroughBtn: document.getElementById("homeWalkthroughBtn"),
     progress: document.getElementById("homeProgress"),
     progressMeta: document.getElementById("homeProgressMeta"),
@@ -296,6 +297,7 @@ function maybeAutoOpenWalkthrough() {
 async function refreshHomeChrome() {
   const {
     signInBtn,
+    signOutBtn,
     progress,
     progressMeta,
     progressFill,
@@ -310,6 +312,7 @@ async function refreshHomeChrome() {
   const showPlacement = !isPlacementDone();
 
   if (signInBtn) signInBtn.hidden = loggedIn;
+  if (signOutBtn) signOutBtn.hidden = !loggedIn;
 
   if (placementBtn) {
     placementBtn.hidden = !showPlacement;
@@ -418,6 +421,7 @@ export function initHomeOverlay(handlers) {
   const {
     overlay,
     signInBtn,
+    signOutBtn,
     walkthroughBtn,
     placementBtn,
     threeBtn,
@@ -440,6 +444,14 @@ export function initHomeOverlay(handlers) {
   }
 
   signInBtn?.addEventListener("click", () => openAuthPanel());
+  signOutBtn?.addEventListener("click", async () => {
+    try {
+      await signOut();
+    } catch {
+      /* ignore */
+    }
+    refreshHomeChrome();
+  });
   walkthroughBtn?.addEventListener("click", () => {
     openWalkthrough({ fromStart: true });
   });

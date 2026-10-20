@@ -2475,6 +2475,7 @@ html.mobile-preview .popup-explain-he {
     max(24px, env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-left));
   box-sizing: border-box;
+  overflow: hidden;
   opacity: 1;
   transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2495,10 +2496,19 @@ body.home-open #content {
   pointer-events: none;
 }
 
-html:has(body.home-open),
+/* Lock scroll without clipping the fixed home overlay (body is normally narrow). */
+html:has(body.home-open) {
+  overflow: hidden;
+  height: 100%;
+}
+
 body.home-open {
   overflow: hidden;
   overscroll-behavior: none;
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
 }
 
 .home-overlay-chrome {
@@ -2507,18 +2517,33 @@ body.home-open {
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
+  /* Match home content block so Sign in lines up with its right edge */
   width: 100%;
-  max-width: var(--text-col);
+  max-width: 36rem;
   margin: 0 auto;
+  z-index: 1;
 }
 
 .home-overlay-chrome-end {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: flex-end;
   gap: 16px;
   margin-left: auto;
   flex-shrink: 0;
+}
+
+/* Compact chrome link — not the tall CTA underline treatment */
+.home-overlay-chrome .home-sign-in-btn,
+.home-overlay-chrome .home-sign-out-btn,
+.home-overlay-chrome .home-walkthrough-btn {
+  padding: 6px 0;
+  line-height: 1.2;
+}
+
+.home-overlay-chrome .home-sign-in-btn::after,
+.home-overlay-chrome .home-walkthrough-btn::after {
+  display: none;
 }
 
 .home-walkthrough-btn {
@@ -2601,8 +2626,28 @@ body.home-open {
   color: var(--accent);
 }
 
-.home-sign-in-btn[hidden] {
-  display: none;
+.home-sign-in-btn[hidden],
+.home-sign-out-btn[hidden] {
+  display: none !important;
+}
+
+.home-sign-out-btn {
+  position: relative;
+  display: inline-block;
+  margin: 0;
+  border: none;
+  background: none;
+  padding: 6px 0;
+  box-sizing: border-box;
+  font-family: var(--english-font);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text-color);
+  text-align: center;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .home-overlay-main {
