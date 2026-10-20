@@ -2495,6 +2495,12 @@ body.home-open #content {
   pointer-events: none;
 }
 
+html:has(body.home-open),
+body.home-open {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
 .home-overlay-chrome {
   display: flex;
   align-items: center;
