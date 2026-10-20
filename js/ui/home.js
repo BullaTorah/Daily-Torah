@@ -1,5 +1,6 @@
 import { isLoggedIn } from "../core/auth.js";
-import { countLearnedWords, listWords, onLearnedWordsChange, onWordBankChange } from "../core/word-bank.js";
+import { countLearnedWords, onLearnedWordsChange, onWordBankChange } from "../core/word-bank.js";
+import { getWeeklyFlashLabel } from "../core/weekly-flashcards.js";
 import {
   TORAH_STRONGS_TOTAL,
   TORAH_PROGRESS_BOUNDARIES,
@@ -314,14 +315,17 @@ async function refreshHomeChrome() {
     placementBtn.hidden = !showPlacement;
   }
 
-  const showPractice = loggedIn && listWords().length > 0;
-  if (practiceBtn) practiceBtn.hidden = !showPractice;
-  if (storyBtn) storyBtn.hidden = !showPractice;
-  if (weeklyFlashBtn) weeklyFlashBtn.hidden = !loggedIn;
+  // Practice tools stay visible; click handlers gate on login / word bank
+  if (practiceBtn) practiceBtn.hidden = false;
+  if (storyBtn) storyBtn.hidden = false;
+  if (weeklyFlashBtn) {
+    weeklyFlashBtn.hidden = false;
+    weeklyFlashBtn.textContent = getWeeklyFlashLabel();
+  }
 
   const practiceCol = document.querySelector(".home-actions-practice");
   if (practiceCol) {
-    practiceCol.hidden = !loggedIn;
+    practiceCol.hidden = false;
   }
 
   if (!loggedIn) {

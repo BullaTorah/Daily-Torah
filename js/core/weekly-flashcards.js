@@ -100,6 +100,15 @@ export function getWeeklyFlashState() {
   return readState();
 }
 
+/** Home / overlay label: first set vs later sets. */
+export function getWeeklyFlashLabel() {
+  // Guests haven't started a saved set — always the first batch.
+  if (!isLoggedIn()) return "First 10 words";
+  const state = readState();
+  const setIndex = Math.max(1, Number(state?.setIndex) || 1);
+  return setIndex <= 1 ? "First 10 words" : "Next 10 words";
+}
+
 /**
  * Ensure a set exists. Syncs knownInSet with the real Known words list.
  * @returns {{ strongs: string[], knownInSet: string[], setIndex: number, complete: boolean, cards: object[] }}

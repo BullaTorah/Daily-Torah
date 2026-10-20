@@ -51,7 +51,7 @@ import {
   animateDifficultyTabs
 } from "./ui/slider.js";
 import { initPopupHandlers, showPopup, hidePopup } from "./ui/popup.js";
-import { initAuthPanel } from "./ui/auth-panel.js";
+import { initAuthPanel, openAuthPanel } from "./ui/auth-panel.js";
 import {
   initWordBankPanel,
   showWordBankPanel,
@@ -166,9 +166,12 @@ async function revealReading(mode) {
 }
 
 async function openPracticeFromHome() {
-  if (!isLoggedIn() || !shouldOfferDailyVocab()) {
-    showHomeOverlay();
-    refreshHomeOverlay();
+  if (!isLoggedIn()) {
+    openAuthPanel();
+    return;
+  }
+  if (!shouldOfferDailyVocab()) {
+    showWordBankPanel();
     return;
   }
   dailyVocabOfferedThisSession = true;
@@ -177,6 +180,7 @@ async function openPracticeFromHome() {
     const practice = await loadDailyVocabPractice();
     if (!practice?.items?.length) {
       hideDailyVocabOverlay();
+      showWordBankPanel();
       return;
     }
     showDailyVocabOverlay(practice);

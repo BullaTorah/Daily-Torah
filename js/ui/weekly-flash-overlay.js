@@ -3,6 +3,7 @@ import {
   WEEKLY_SET_SIZE,
   advanceWeeklyFlashSet,
   ensureWeeklyFlashSet,
+  getWeeklyFlashLabel,
   markWeeklyCardKnown,
   onWeeklyFlashChange
 } from "../core/weekly-flashcards.js";
@@ -59,6 +60,8 @@ function paint() {
 
   setSnapshot = ensureWeeklyFlashSet();
   const cards = setSnapshot.cards || [];
+  const title = document.getElementById("weeklyFlashTitle");
+  if (title) title.textContent = getWeeklyFlashLabel();
 
   if (!cards.length) {
     if (stage) stage.hidden = true;

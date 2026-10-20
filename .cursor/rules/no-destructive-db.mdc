@@ -1,0 +1,25 @@
+---
+description: Never wipe or reset production user data without explicit approval
+alwaysApply: true
+---
+
+# No destructive database changes on deploy
+
+User word banks, learned words, profiles, and progress are live production data.
+
+## Never without an explicit user request in this conversation
+
+- `DELETE` / `TRUNCATE` / wipe migrations (e.g. reset learned words)
+- `supabase db push` (or equivalent) when pending migrations include destructive SQL
+- Repairing migration history in a way that re-applies destructive scripts
+- Any “clear all users’ X” SQL run against the linked/remote project
+
+## On publish / deploy
+
+- Deploy edge **functions** only unless the user explicitly asks to apply DB migrations.
+- Before any `db push`, read pending migration SQL. If any statement deletes or resets user rows, **stop and ask** — do not apply.
+- Prefer schema-additive migrations (`CREATE`, `ALTER … ADD`, new policies). Put one-off data wipes in a separately named file and never auto-run them.
+
+## If a reset is actually needed
+
+Ask first, name the tables/rows affected, and wait for a clear yes. “Publish the site” is not permission to wipe user data.

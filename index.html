@@ -33,7 +33,7 @@
   <div class="home-overlay-main">
     <div class="site-logo home-logo">BULLA TORAH</div>
     <h1 id="homeHeadline" class="home-headline">You can read the Torah.</h1>
-    <p class="home-lead">Start with a few verses a day. Feel more and more comfortable. Track your progress.</p>
+    <p class="home-lead">Start with a few verses a day. Feel more and more comfortable. <span class="home-lead-last">Track your progress.</span></p>
     <div id="homeProgress" class="home-progress torah-progress" hidden>
       <div class="home-progress-label">
         <span>Words you know</span>
@@ -53,9 +53,9 @@
       </div>
       <div class="home-actions-col home-actions-practice">
         <p class="home-actions-label">Practice</p>
-        <button type="button" id="homeWeeklyFlashBtn" class="home-cta home-cta-weekly" hidden>Next 10 words</button>
-        <button type="button" id="homePracticeBtn" class="home-cta home-cta-tertiary" hidden>Practice words</button>
-        <button type="button" id="homeStoryBtn" class="home-cta home-cta-story" hidden>Practice story</button>
+        <button type="button" id="homeWeeklyFlashBtn" class="home-cta home-cta-weekly">First 10 words</button>
+        <button type="button" id="homePracticeBtn" class="home-cta home-cta-tertiary">Practice words</button>
+        <button type="button" id="homeStoryBtn" class="home-cta home-cta-story">Practice story</button>
       </div>
     </div>
     <p id="homeLoadingHint" class="home-loading-hint" hidden>Loading today’s reading…</p>
@@ -310,7 +310,7 @@
   <div class="weekly-flash-backdrop" data-weekly-flash-close></div>
   <div class="weekly-flash-card" role="dialog" aria-labelledby="weeklyFlashTitle" aria-modal="true">
     <div class="weekly-flash-header">
-      <h2 id="weeklyFlashTitle">Next 10 words</h2>
+      <h2 id="weeklyFlashTitle">First 10 words</h2>
       <button type="button" class="weekly-flash-close" data-weekly-flash-close aria-label="Close">×</button>
     </div>
     <p id="weeklyFlashStatus" class="weekly-flash-status" hidden></p>

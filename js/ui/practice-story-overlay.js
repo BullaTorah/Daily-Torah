@@ -1,4 +1,6 @@
 import { hidePopup } from "./popup.js";
+import { isLoggedIn } from "../core/auth.js";
+import { openAuthPanel } from "./auth-panel.js";
 
 let escapeBound = false;
 let loadStory = null;
@@ -152,6 +154,10 @@ async function run() {
 }
 
 export function startPracticeStory() {
+  if (!isLoggedIn()) {
+    openAuthPanel();
+    return;
+  }
   run();
 }
 
