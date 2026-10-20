@@ -29,11 +29,13 @@ import {
   clearProfileCache,
   loadUserProfile
 } from "./core/profile.js";
-import { loadWordBank, clearWordBank } from "./core/word-bank.js";
+import { loadWordBank, clearWordBank, seedKnownWordsForLevel } from "./core/word-bank.js";
+import { getTahotRankedFrequency } from "./core/lookup-tahot.js";
 import {
   loadDailyVocabPractice,
   shouldOfferDailyVocab
 } from "./core/daily-vocab.js";
+import { loadPracticeStory } from "./core/practice-story.js";
 import {
   initRender,
   render,
@@ -42,7 +44,12 @@ import {
   updateAliyahInfo,
   setRenderState
 } from "./ui/render.js";
-import { initSlider, setDifficulty, getCurrentDifficulty } from "./ui/slider.js";
+import {
+  initSlider,
+  setDifficulty,
+  getCurrentDifficulty,
+  animateDifficultyTabs
+} from "./ui/slider.js";
 import { initPopupHandlers, showPopup, hidePopup } from "./ui/popup.js";
 import { initAuthPanel } from "./ui/auth-panel.js";
 import {
@@ -57,6 +64,38 @@ import {
   showDailyVocabError,
   hideDailyVocabOverlay
 } from "./ui/daily-vocab-overlay.js";
+import {
+  initPracticeStoryOverlay,
+  startPracticeStory,
+  hidePracticeStoryOverlay
+} from "./ui/practice-story-overlay.js";
+import {
+  initWeeklyFlashOverlay,
+  openWeeklyFlashOverlay
+} from "./ui/weekly-flash-overlay.js";
+import {
+  initHomeOverlay,
+  isHomeOpen,
+  setHomeReadingReady,
+  refreshHomeOverlay,
+  showHomeOverlay,
+  scheduleDifficultyProgressEntrance,
+  startReadingFromHome
+} from "./ui/home.js";
+import {
+  initReadingFeedback,
+  resetReadingFeedback
+} from "./ui/reading-feedback.js";
+import {
+  initPlacementCatalog,
+  markPlacementDone
+} from "./core/placement.js";
+import { initTheme } from "./core/theme.js";
+import {
+  initPlacementOverlay,
+  openPlacementOverlay
+} from "./ui/placement-overlay.js";
+import { initWalkthroughOverlay } from "./ui/walkthrough-overlay.js";
 
 const loadJSON = async (url) => {
   const res = await fetch(url);
@@ -76,6 +115,77 @@ let currentAliyotCount = MAX_ALIYAH_TABS;
 let aliyahTabAnimTimers = [];
 let sessionAliyahOverride = null;
 let dailyVocabOfferedThisSession = false;
+let fullVerses = [];
+let currentTitle = "";
+let readingMode = "aliyah";
+let readingReady = false;
+let readingReadyResolvers = [];
+let readingLoadGeneration = 0;
+
+function markReadingReady(ready) {
+  readingReady = ready;
+  setHomeReadingReady(ready);
+  if (ready) {
+    const waiters = readingReadyResolvers;
+    readingReadyResolvers = [];
+    waiters.forEach((resolve) => resolve());
+  }
+}
+
+function waitUntilReadingReady() {
+  if (readingReady) return Promise.resolve();
+  return new Promise((resolve) => {
+    readingReadyResolvers.push(resolve);
+  });
+}
+
+function applyDisplayedVerses({ animate = false, animateDelay = 0 } = {}) {
+  if (!fullVerses.length) return { entranceEndMs: 0 };
+  const verses =
+    readingMode === "three" ? fullVerses.slice(0, 3) : fullVerses;
+  const difficulty = sliderInitialized
+    ? getCurrentDifficulty()
+    : resolveStoredDifficulty(getUserDifficulty(0), 0);
+  setRenderState({ title: currentTitle, verses, difficulty });
+  const result = render(currentTitle, verses, { animate, animateDelay });
+  resetReadingFeedback();
+  return result || { entranceEndMs: 0 };
+}
+
+async function revealReading(mode) {
+  readingMode = mode === "three" ? "three" : "aliyah";
+  const aliyahMs = setAliyahTabsUI(getActiveAliyahNumber(), { animate: true });
+  const difficultyMs = animateDifficultyTabs(getCurrentDifficulty());
+  const headerMs = Math.max(aliyahMs, difficultyMs);
+  const { entranceEndMs } = applyDisplayedVerses({
+    animate: true,
+    animateDelay: headerMs + 120
+  });
+  scheduleDifficultyProgressEntrance({ delayMs: entranceEndMs });
+  hidePopup();
+}
+
+async function openPracticeFromHome() {
+  if (!isLoggedIn() || !shouldOfferDailyVocab()) {
+    showHomeOverlay();
+    refreshHomeOverlay();
+    return;
+  }
+  dailyVocabOfferedThisSession = true;
+  showDailyVocabLoading();
+  try {
+    const practice = await loadDailyVocabPractice();
+    if (!practice?.items?.length) {
+      hideDailyVocabOverlay();
+      return;
+    }
+    showDailyVocabOverlay(practice);
+  } catch (err) {
+    showDailyVocabError(
+      err.message || "Could not load today’s vocabulary practice."
+    );
+  }
+}
 
 function clearLegacyAliyahOverride() {
   try {
@@ -159,12 +269,12 @@ function animateAliyahTabs(targetNumber) {
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
     applyAliyahTabsUI(finalNumber);
-    return;
+    return 0;
   }
 
   applyAliyahTabsUI(1);
 
-  if (finalNumber <= 1) return;
+  if (finalNumber <= 1) return 0;
 
   let delay = 0;
   let gap = ALIYAH_TAB_BASE_GAP_MS;
@@ -176,16 +286,18 @@ function animateAliyahTabs(targetNumber) {
     );
     gap *= ALIYAH_TAB_GAP_MULTIPLIER;
   }
+
+  return delay;
 }
 
 function setAliyahTabsUI(activeNumber = getActiveAliyahNumber(), { animate = false } = {}) {
   if (animate) {
-    animateAliyahTabs(activeNumber);
-    return;
+    return animateAliyahTabs(activeNumber);
   }
 
   clearAliyahTabAnimation();
   applyAliyahTabsUI(activeNumber);
+  return 0;
 }
 
 function initAliyahTabs() {
@@ -228,6 +340,8 @@ async function loadReading() {
 }
 
 async function loadReadingInner() {
+  const loadId = ++readingLoadGeneration;
+  markReadingReady(false);
   clearAliyahTabAnimation();
   clearAliyahTabsHighlight();
   showLoading();
@@ -252,6 +366,10 @@ async function loadReadingInner() {
     }
 
     const { wordLookup, gloss, frequency, tahotFrequency } = cachedLexiconData;
+    initPlacementCatalog({
+      frequency: tahotFrequency,
+      gloss
+    });
     initRender();
 
     const calendar = await fetchCalendar(isDiaspora);
@@ -285,16 +403,18 @@ async function loadReadingInner() {
       throw new Error("No verses returned for this aliyah.");
     }
 
+    if (loadId !== readingLoadGeneration) return;
+
     const title = parsha.displayValue.en;
+    currentTitle = title;
+    fullVerses = verses;
     updateAliyahInfo(formatAliyahDisplay(aliyahRef));
-    setAliyahTabsUI(aliyahNumber, { animate: true });
+    const playEntrance = !isHomeOpen();
+    const aliyahMs = setAliyahTabsUI(aliyahNumber, { animate: playEntrance });
 
     const difficulty = sliderInitialized
       ? getCurrentDifficulty()
       : resolveStoredDifficulty(getUserDifficulty(0), 0);
-
-    setRenderState({ title, verses, difficulty });
-    render(title, verses, { animate: true });
 
     if (!sliderInitialized) {
       initSlider(difficulty);
@@ -303,8 +423,26 @@ async function loadReadingInner() {
       setDifficulty(difficulty, { persist: false, rerender: false });
     }
 
-    maybeOfferDailyVocab();
+    const difficultyMs = playEntrance
+      ? animateDifficultyTabs(difficulty)
+      : 0;
+    const headerMs = Math.max(aliyahMs, difficultyMs);
+
+    const { entranceEndMs } = applyDisplayedVerses({
+      animate: playEntrance,
+      animateDelay: playEntrance ? headerMs + 120 : 0
+    });
+    if (playEntrance) {
+      scheduleDifficultyProgressEntrance({ delayMs: entranceEndMs });
+    }
+    markReadingReady(true);
+
+    if (!isHomeOpen()) {
+      maybeOfferDailyVocab();
+    }
   } catch (err) {
+    if (loadId !== readingLoadGeneration) return;
+    markReadingReady(false);
     showError(
       err.message || "Something went wrong while loading today's reading.",
       loadReading
@@ -313,6 +451,7 @@ async function loadReadingInner() {
 }
 
 async function maybeOfferDailyVocab() {
+  if (isHomeOpen()) return;
   if (dailyVocabOfferedThisSession) return;
   if (!isLoggedIn() || !shouldOfferDailyVocab()) return;
 
@@ -348,6 +487,17 @@ async function applySessionSettings() {
   setAliyahTabsUI(null, { animate: false });
 }
 
+async function loadRankedFrequencyForSeed() {
+  let ranked = getTahotRankedFrequency();
+  if (ranked.length) return ranked;
+  try {
+    const tahotFrequency = await loadJSON("data/tahot/frequency.json");
+    return Array.isArray(tahotFrequency?.ranked) ? tahotFrequency.ranked : [];
+  } catch {
+    return [];
+  }
+}
+
 async function handleAuthChange(session) {
   if (session) {
     try {
@@ -365,6 +515,7 @@ async function handleAuthChange(session) {
 
   await applySessionSettings();
   refreshWordBankPanel();
+  refreshHomeOverlay();
   loadReading();
 }
 
@@ -375,13 +526,110 @@ async function bootstrap() {
     document.documentElement.classList.add("mobile-preview");
   }
 
+  initTheme();
+
   await initAuth();
 
   initAuthPanel({
     onOpenWordBank: () => showWordBankPanel()
   });
-  initWordBankPanel();
+  initPracticeStoryOverlay({
+    loadStory: () =>
+      loadPracticeStory({
+        level: sliderInitialized
+          ? getCurrentDifficulty()
+          : resolveStoredDifficulty(getUserDifficulty(0), 0),
+        ensureLexicon: async () => {
+          if (getTahotRankedFrequency().length) return;
+          await waitUntilReadingReady();
+        }
+      })
+  });
+  initWordBankPanel({
+    onPracticeStory: () => startPracticeStory()
+  });
   initDailyVocabOverlay();
+  initWeeklyFlashOverlay();
+  initPlacementOverlay({
+    onPersistLevel: async (level) => {
+      markPlacementDone(level);
+      setDifficulty(level, { persist: true });
+      if (isLoggedIn()) {
+        try {
+          const ranked = await loadRankedFrequencyForSeed();
+          await seedKnownWordsForLevel(level, ranked);
+        } catch (err) {
+          console.warn("Could not seed known words from placement:", err);
+        }
+      }
+      refreshHomeOverlay();
+    },
+    onComplete: () => {
+      startReadingFromHome("three");
+    }
+  });
+  initHomeOverlay({
+    waitUntilReadingReady,
+    revealReading,
+    openPractice: openPracticeFromHome,
+    openPracticeStory: () => startPracticeStory(),
+    openWeeklyFlash: () => openWeeklyFlashOverlay(),
+    openPlacement: () => openPlacementOverlay(),
+    isReadingReady: () => readingReady
+  });
+  initWalkthroughOverlay({
+    ensureReading: async () => {
+      if (isHomeOpen()) {
+        await startReadingFromHome("three");
+      }
+    },
+    ensureHome: async () => {
+      showHomeOverlay();
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r))
+      );
+    },
+    openWordPopup: (word) => {
+      let segments = [];
+      try {
+        segments = JSON.parse(word.dataset.segments || "[]");
+      } catch {
+        segments = [];
+      }
+      if (!Array.isArray(segments)) segments = [];
+
+      const { senses } = lookupSenses({
+        word: word.dataset.word,
+        verseRef: word.dataset.verseRef,
+        tokenIndex: Number(word.dataset.tokenIndex),
+        strongs: word.dataset.strongs,
+        segments,
+        translation: word.dataset.translation || ""
+      });
+
+      if (segments.length && senses[0] && !senses[0].segments?.length) {
+        senses[0].segments = segments;
+      }
+      if (word.dataset.translation && senses[0] && !senses[0].translation) {
+        senses[0].translation = word.dataset.translation;
+      }
+
+      showPopup({ word: word.dataset.word, senses }, word);
+    }
+  });
+  initReadingFeedback({
+    shouldShowContinue: () =>
+      readingMode === "three" && fullVerses.length > 3,
+    onContinue: () => {
+      readingMode = "aliyah";
+      applyDisplayedVerses({ animate: false });
+    },
+    getDisplayedVerses: () =>
+      readingMode === "three" ? fullVerses.slice(0, 3) : fullVerses,
+    getDifficulty: () =>
+      sliderInitialized ? getCurrentDifficulty() : getUserDifficulty(0),
+    onWordsCredited: () => refreshHomeOverlay()
+  });
 
   onAuthStateChange((session, event) => {
     if (event && event !== "SIGNED_IN" && event !== "SIGNED_OUT") {
@@ -392,6 +640,7 @@ async function bootstrap() {
     }
     if (event === "SIGNED_OUT") {
       hideDailyVocabOverlay();
+      hidePracticeStoryOverlay();
     }
     handleAuthChange(session);
   });
@@ -406,18 +655,38 @@ async function bootstrap() {
     }
   }
 
+  refreshHomeOverlay();
+
   isDiaspora = getUserDiaspora(true);
 
   initDiasporaToggle();
   initAliyahTabs();
 
   initPopupHandlers((word) => {
+    let segments = [];
+    try {
+      segments = JSON.parse(word.dataset.segments || "[]");
+    } catch {
+      segments = [];
+    }
+    if (!Array.isArray(segments)) segments = [];
+
     const { senses } = lookupSenses({
       word: word.dataset.word,
       verseRef: word.dataset.verseRef,
       tokenIndex: Number(word.dataset.tokenIndex),
-      strongs: word.dataset.strongs
+      strongs: word.dataset.strongs,
+      segments,
+      translation: word.dataset.translation || ""
     });
+
+    if (segments.length && senses[0] && !senses[0].segments?.length) {
+      senses[0].segments = segments;
+    }
+    if (word.dataset.translation && senses[0] && !senses[0].translation) {
+      senses[0].translation = word.dataset.translation;
+    }
+
     showPopup({ word: word.dataset.word, senses }, word);
   });
 

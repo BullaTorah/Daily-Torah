@@ -5,6 +5,11 @@ import {
   markNeedsPractice,
   shouldOfferDailyVocab
 } from "../core/daily-vocab.js";
+import {
+  markWordLearned,
+  recordGotIt,
+  removeWord
+} from "../core/word-bank.js";
 import { renderPracticeVerse } from "./render.js";
 import { hidePopup } from "./popup.js";
 
@@ -262,6 +267,51 @@ function advanceAfterOutcome(delayMs) {
   }, delayMs);
 }
 
+function askRemoveLearnedWord(itemEl) {
+  return new Promise((resolve) => {
+    if (!itemEl) {
+      resolve(false);
+      return;
+    }
+
+    advancing = true;
+    const actions = itemEl.querySelector(".daily-vocab-item-actions");
+    if (actions) actions.hidden = true;
+
+    const prompt = document.createElement("div");
+    prompt.className = "daily-vocab-remove-prompt";
+    prompt.innerHTML = `
+      <p class="daily-vocab-remove-prompt-text">You’ve got this word 5 times. Remove it from your Practice words?</p>
+      <div class="daily-vocab-remove-prompt-actions">
+        <button type="button" class="daily-vocab-remove-keep">Keep it</button>
+        <button type="button" class="daily-vocab-remove-confirm">Remove</button>
+      </div>
+    `;
+
+    const finish = (value) => {
+      prompt.remove();
+      if (actions) actions.hidden = false;
+      advancing = false;
+      resolve(value);
+    };
+
+    prompt
+      .querySelector(".daily-vocab-remove-keep")
+      ?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        finish(false);
+      });
+    prompt
+      .querySelector(".daily-vocab-remove-confirm")
+      ?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        finish(true);
+      });
+
+    itemEl.appendChild(prompt);
+  });
+}
+
 function bindItemActions() {
   if (actionsBound) return;
   actionsBound = true;
@@ -298,17 +348,51 @@ function bindItemActions() {
 
     if (gotBtn) {
       const strongs = gotBtn.dataset.strongs;
+      const itemEl = gotBtn.closest(".daily-vocab-item");
       const next = markVerseComplete(strongs);
       if (next) currentCache = next;
-      const needSibling = gotBtn
-        .closest(".daily-vocab-item")
-        ?.querySelector(".daily-vocab-need-btn");
+      const needSibling = itemEl?.querySelector(".daily-vocab-need-btn");
       needSibling?.classList.remove("is-default", "is-selected");
       needSibling?.setAttribute("aria-pressed", "false");
       gotBtn.classList.add("is-celebrating");
       gotBtn.setAttribute("aria-pressed", "true");
       gotBtn.setAttribute("aria-label", "Got it");
-      advanceAfterOutcome(480);
+
+      void (async () => {
+        let row = null;
+        try {
+          row = await recordGotIt(strongs);
+        } catch {
+          advanceAfterOutcome(480);
+          return;
+        }
+
+        if (!row || Number(row.got_it_count) !== 5) {
+          advanceAfterOutcome(480);
+          return;
+        }
+
+        try {
+          await markWordLearned({
+            strongs: row.strongs,
+            lemma: row.lemma,
+            gloss: row.gloss,
+            surfaceExample: row.surface_example
+          });
+        } catch {
+          /* learned row is best-effort; still offer remove */
+        }
+
+        const remove = await askRemoveLearnedWord(itemEl);
+        if (remove) {
+          try {
+            await removeWord(strongs);
+          } catch {
+            /* keep going */
+          }
+        }
+        goNext();
+      })();
     }
   });
 

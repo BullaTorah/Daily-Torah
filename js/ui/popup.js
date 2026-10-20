@@ -1,14 +1,23 @@
 import { isAuthConfigured, isLoggedIn } from "../core/auth.js";
 import {
   isWordSaved,
+  isWordLearned,
   toggleWord,
-  onWordBankChange
+  markWordLearned,
+  onWordBankChange,
+  onLearnedWordsChange
 } from "../core/word-bank.js";
+import {
+  explainWord,
+  getCachedExplanation
+} from "../core/explain-word.js";
 import { openAuthPanel } from "./auth-panel.js";
 
 let activeAnchor = null;
 let activePopupData = null;
 let activeSenseIndex = 0;
+/** @type {{ key: string, sections?: object, loading?: boolean, error?: string } | null} */
+let activeExplainState = null;
 
 function escapeHtml(str) {
   return String(str || "")
@@ -18,7 +27,73 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+/** Keep niqqud; drop trop/meteg that often fall back to a different face in Suez One. */
+function forHebrewDisplay(str) {
+  return String(str || "")
+    .normalize("NFC")
+    .replace(/[\u0591-\u05AF\u05BD\u05BF]/g, "");
+}
+
+/** Escape grammar text, rendering **bold** (exact translation) as <strong>. */
+function formatGrammarHtml(text, takeaway = "") {
+  let source = String(text || "").trim();
+  const gloss = String(takeaway || "").trim();
+
+  if (gloss) {
+    // Keep model lead-in; append bold takeaway if not already present
+    const already =
+      source.includes(`**${gloss}**`) ||
+      source.toLowerCase().includes(gloss.toLowerCase());
+    if (!already) {
+      const leadIn = /(?:making it|so it reads|so here it means)\s*$/i.test(
+        source
+      );
+      source = leadIn
+        ? `${source} **${gloss}**.`
+        : `${source}${source && !/[.!?]$/.test(source) ? "." : ""} So here it means **${gloss}**.`;
+    } else if (!/\*\*[^*]+\*\*/.test(source)) {
+      // Gloss is plain in the text — bold the last occurrence
+      const idx = source.toLowerCase().lastIndexOf(gloss.toLowerCase());
+      if (idx >= 0) {
+        source =
+          source.slice(0, idx) +
+          `**${source.slice(idx, idx + gloss.length)}**` +
+          source.slice(idx + gloss.length);
+      }
+    }
+  } else if (!/\*\*[^*]+\*\*/.test(source)) {
+    const match = source.match(/"([^"]+)"(?![\s\S]*"[^"]*")/);
+    if (match && match.index != null) {
+      const start = match.index;
+      const end = start + match[0].length;
+      source =
+        source.slice(0, start) + `**${match[0]}**` + source.slice(end);
+    }
+  }
+
+  if (!source) return "";
+
+  return source
+    .split(/(\*\*[^*]+\*\*)/g)
+    .map((part) => {
+      const bold = part.match(/^\*\*([^*]+)\*\*$/);
+      if (bold) {
+        return `<strong class="popup-explain-gloss">${escapeHtml(bold[1])}</strong>`;
+      }
+      return escapeHtml(part);
+    })
+    .join("");
+}
+
+let holdOpenForWalkthrough = false;
+
+/** Keep the gloss popup open across walkthrough tips (tap → Explain). */
+export function setPopupWalkthroughHold(on) {
+  holdOpenForWalkthrough = Boolean(on);
+}
+
 export function hidePopup() {
+  holdOpenForWalkthrough = false;
   const popup = document.getElementById("popup");
   popup.style.display = "none";
   popup.innerHTML = "";
@@ -29,12 +104,42 @@ export function hidePopup() {
   popup.style.width = "";
   popup.style.maxWidth = "";
   popup.style.transform = "";
+  popup.classList.remove("is-on-white", "is-explain-open");
   if (activeAnchor) {
-    activeAnchor.classList.remove("popup-active");
+    activeAnchor.classList.remove("popup-active", "is-on-white");
   }
   activeAnchor = null;
   activePopupData = null;
   activeSenseIndex = 0;
+  activeExplainState = null;
+}
+
+function syncExplainPopupWidth(popup) {
+  const open = Boolean(
+    activeExplainState &&
+      (activeExplainState.loading ||
+        activeExplainState.sections ||
+        activeExplainState.error)
+  );
+  popup.classList.toggle("is-explain-open", open);
+}
+
+function explainCacheKey(surface, sense, verseRef) {
+  return `${verseRef || ""}|${surface || ""}|${sense?.strongs || ""}`;
+}
+
+function getVerseContext(anchor) {
+  const verseRef = anchor?.dataset?.verseRef || "";
+  const root =
+    anchor?.closest(".verse") ||
+    anchor?.closest(".daily-vocab-verse-host") ||
+    null;
+  if (!root) {
+    return { verseHe: "", verseEn: "", verseRef };
+  }
+  const verseHe = root.querySelector(".hebrew")?.textContent?.trim() || "";
+  const verseEn = root.querySelector(".english")?.textContent?.trim() || "";
+  return { verseHe, verseEn, verseRef };
 }
 
 function isDockedPopup() {
@@ -136,36 +241,136 @@ function renderWordBankButton(surfaceWord, sense) {
   if (!isAuthConfigured() || !sense.strongs) return "";
 
   const saved = isWordSaved(sense.strongs);
-  const label = saved ? "Saved" : "Save to word list";
+  const label = saved ? "In Practice" : "Add to Practice words";
 
   return `<button type="button" class="popup-save-btn${saved ? " saved" : ""}" data-action="word-bank" aria-pressed="${saved ? "true" : "false"}">${label}</button>`;
 }
 
+function renderKnowThisButton(sense) {
+  if (activeAnchor?.closest("#dailyVocabPanel")) return "";
+  if (!isAuthConfigured() || !sense.strongs) return "";
+
+  const known = isWordLearned(sense.strongs);
+  const label = known ? "Known" : "Mark as Known";
+
+  return `<button type="button" class="popup-know-btn${known ? " known" : ""}" data-action="know-word"${known ? " disabled" : ""} aria-pressed="${known ? "true" : "false"}">${label}</button>`;
+}
+
+function isExplainViewActive() {
+  return Boolean(
+    activeExplainState &&
+      (activeExplainState.loading ||
+        activeExplainState.sections ||
+        activeExplainState.error)
+  );
+}
+
+function renderExplainButton(sense) {
+  if (!isAuthConfigured()) return "";
+  if (!sense?.strongs && !sense?.lemma) return "";
+  return `<button type="button" class="popup-explain-btn" data-action="explain" aria-expanded="false">Explain</button>`;
+}
+
+function renderExplainColumn(label, part) {
+  if (!part?.he) return "";
+  const he = forHebrewDisplay(part.he);
+  return `<div class="popup-explain-col">
+    <div class="popup-explain-label">${escapeHtml(label)}</div>
+    <div class="popup-explain-he" lang="he" dir="rtl">${escapeHtml(he)}</div>
+    ${part.en ? `<p class="popup-explain-text">${escapeHtml(part.en)}</p>` : ""}
+  </div>`;
+}
+
+function renderExplainFooter(surfaceWord, sense) {
+  const know = renderKnowThisButton(sense);
+  const save = renderWordBankButton(surfaceWord, sense);
+  return `<div class="popup-explain-actions">
+    <button type="button" class="popup-explain-hide-btn" data-action="explain-hide">Hide</button>
+    ${know}
+    ${save}
+  </div>`;
+}
+
+function renderExplainView(surfaceWord, sense) {
+  if (activeExplainState?.loading) {
+    return `<div class="popup-explain is-loading">Explaining…</div>
+      ${renderExplainFooter(surfaceWord, sense)}`;
+  }
+  if (activeExplainState?.error) {
+    return `<div class="popup-explain is-error">${escapeHtml(activeExplainState.error)}</div>
+      ${renderExplainFooter(surfaceWord, sense)}`;
+  }
+  const sections = activeExplainState?.sections;
+  if (!sections?.root) return "";
+  // DOM order Prefix → Root → Suffix; CSS row-reverse shows RTL: Prefix | Root | Suffix
+  const note =
+    sections.literal || sections.grammar || sections.takeaway
+      ? `<div class="popup-explain-note">
+          ${
+            sections.literal
+              ? `<h4 class="popup-explain-literal">${escapeHtml(sections.literal)}</h4>`
+              : ""
+          }
+          ${
+            sections.grammar || sections.takeaway
+              ? `<p class="popup-explain-grammar">${formatGrammarHtml(
+                  sections.grammar,
+                  sections.takeaway
+                )}</p>`
+              : ""
+          }
+        </div>`
+      : "";
+  return `<div class="popup-explain-result">
+    <div class="popup-explain-grid">
+      ${renderExplainColumn("Prefix", sections.prefix)}
+      ${renderExplainColumn("Root", sections.root)}
+      ${renderExplainColumn("Suffix", sections.suffix)}
+    </div>
+    ${note}
+    ${renderExplainFooter(surfaceWord, sense)}
+  </div>`;
+}
+
 function renderSenseBody(surfaceWord, sense) {
-  const displayWord = sense.lemma || surfaceWord;
+  if (isExplainViewActive()) {
+    return renderExplainView(surfaceWord, sense);
+  }
+
+  const displayWord = forHebrewDisplay(sense.lemma || surfaceWord);
   const lines = [
-    `<div class="popup-word"><strong>${escapeHtml(displayWord)}</strong></div>`
+    `<div class="popup-word" lang="he">${escapeHtml(displayWord)}</div>`
   ];
 
   lines.push(`<div>${escapeHtml(sense.gloss)}</div>`);
-
-  if (sense.strongs) {
-    lines.push(`<div class="popup-meta">Strong's: ${escapeHtml(sense.strongs)}</div>`);
-  }
 
   if (sense.rank != null) {
     lines.push(`<div class="popup-meta">Rank ${escapeHtml(sense.rank)}</div>`);
   }
 
-  lines.push(renderWordBankButton(surfaceWord, sense));
+  if (sense.strongs) {
+    lines.push(`<div class="popup-meta">Strong's: ${escapeHtml(sense.strongs)}</div>`);
+  }
+
+  const actions = [
+    renderExplainButton(sense),
+    renderKnowThisButton(sense),
+    renderWordBankButton(surfaceWord, sense)
+  ]
+    .filter(Boolean)
+    .join("");
+  if (actions) {
+    lines.push(`<div class="popup-actions">${actions}</div>`);
+  }
 
   return lines.join("");
 }
 
 function renderPopupContent(word, senses, activeIndex) {
   const parts = [];
+  const explainView = isExplainViewActive();
 
-  if (senses.length > 1) {
+  if (!explainView && senses.length > 1) {
     const tabs = senses
       .map(
         (_, index) =>
@@ -182,6 +387,203 @@ function renderPopupContent(word, senses, activeIndex) {
   );
 
   return parts.join("");
+}
+
+function rebindPopup(popup, word, senses, activeIndex, anchor) {
+  popup.innerHTML = renderPopupContent(word, senses, activeIndex);
+  syncExplainPopupWidth(popup);
+  bindPopupTabs(popup, word, senses, anchor);
+  bindWordBankButton(popup, word, senses, activeIndex, anchor);
+  bindKnowThisButton(popup, word, senses, activeIndex, anchor);
+  bindExplainButton(popup, word, senses, activeIndex, anchor);
+  bindExplainHideButton(popup, word, senses, activeIndex, anchor);
+  positionPopup(popup, anchor);
+  // Reposition after width transition so floating popup stays above the word
+  window.setTimeout(() => positionPopup(popup, anchor), 360);
+}
+
+function segmentsForExplain(sense, anchor) {
+  if (Array.isArray(sense?.segments) && sense.segments.length) {
+    return sense.segments;
+  }
+  try {
+    const fromDom = JSON.parse(anchor?.dataset?.segments || "[]");
+    return Array.isArray(fromDom) ? fromDom : [];
+  } catch {
+    return [];
+  }
+}
+
+function bindExplainHideButton(popup, word, senses, activeIndex, anchor) {
+  const btn = popup.querySelector("[data-action='explain-hide']");
+  if (!btn) return;
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    activeExplainState = null;
+    rebindPopup(popup, word, senses, activeIndex, anchor);
+  });
+}
+
+function bindExplainButton(popup, word, senses, activeIndex, anchor) {
+  const btn = popup.querySelector("[data-action='explain']");
+  if (!btn) return;
+
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+
+    if (!isLoggedIn()) {
+      hidePopup();
+      openAuthPanel();
+      return;
+    }
+
+    await runExplain(word, senses, activeIndex, anchor);
+  });
+}
+
+async function runExplain(word, senses, activeIndex, anchor, { allowDemo = false } = {}) {
+  const popup = document.getElementById("popup");
+  if (!popup || !anchor) return;
+
+  const sense = senses[activeIndex];
+  const segments = segmentsForExplain(sense, anchor);
+  const translation =
+    sense?.translation ||
+    anchor?.dataset?.translation ||
+    sense?.gloss ||
+    "";
+  const { verseHe, verseEn, verseRef } = getVerseContext(anchor);
+  const key = explainCacheKey(word, sense, verseRef);
+
+  const cached = getCachedExplanation({
+    verseRef,
+    surface: word,
+    strongs: sense?.strongs
+  });
+
+  if (cached) {
+    activeExplainState = { key, sections: cached };
+    rebindPopup(popup, word, senses, activeIndex, anchor);
+    return;
+  }
+
+  if (activeExplainState?.loading && activeExplainState.key === key) return;
+
+  activeExplainState = { key, loading: true };
+  rebindPopup(popup, word, senses, activeIndex, anchor);
+
+  try {
+    if (!isLoggedIn() && allowDemo) {
+      // Walkthrough demo for guests — same layout as a real Explain
+      const surface = forHebrewDisplay(word) || word;
+      activeExplainState = {
+        key,
+        sections: {
+          prefix: null,
+          root: {
+            he: surface,
+            en: sense?.gloss || "Core meaning of this word."
+          },
+          suffix: null,
+          literal: sense?.gloss || "A plain sense of this form.",
+          grammar:
+            "In a real Explain, this note shows how the form works in the verse.",
+          takeaway: sense?.gloss || null
+        }
+      };
+      rebindPopup(popup, word, senses, activeIndex, anchor);
+      return;
+    }
+
+    const sections = await explainWord({
+      surface: word,
+      lemma: sense?.lemma || "",
+      gloss: sense?.gloss || "",
+      strongs: sense?.strongs || "",
+      morph: sense?.morph || "",
+      segments,
+      translation,
+      verseHe,
+      verseEn,
+      verseRef
+    });
+    if (activeExplainState?.key !== key) return;
+    activeExplainState = { key, sections };
+    rebindPopup(popup, word, senses, activeIndex, anchor);
+  } catch (err) {
+    if (activeExplainState?.key !== key) return;
+    if (allowDemo) {
+      const surface = forHebrewDisplay(word) || word;
+      activeExplainState = {
+        key,
+        sections: {
+          prefix: null,
+          root: {
+            he: surface,
+            en: sense?.gloss || "Core meaning of this word."
+          },
+          suffix: null,
+          literal: sense?.gloss || "A plain sense of this form.",
+          grammar:
+            "In a real Explain, this note shows how the form works in the verse.",
+          takeaway: sense?.gloss || null
+        }
+      };
+    } else {
+      activeExplainState = {
+        key,
+        error: err?.message || "Could not explain this word."
+      };
+    }
+    rebindPopup(popup, word, senses, activeIndex, anchor);
+  }
+}
+
+/** Force-open Explain during the walkthrough (demo for guests). */
+export async function openExplainForWalkthrough() {
+  if (!activePopupData || !activeAnchor) return;
+  setPopupWalkthroughHold(true);
+  await runExplain(
+    activePopupData.word,
+    activePopupData.senses,
+    activeSenseIndex,
+    activeAnchor,
+    { allowDemo: true }
+  );
+}
+
+/** Collapse Explain back to the simple gloss popup. */
+export function collapseExplainForWalkthrough() {
+  if (!activePopupData || !activeAnchor) return;
+  const popup = document.getElementById("popup");
+  if (!popup) return;
+  activeExplainState = null;
+  rebindPopup(
+    popup,
+    activePopupData.word,
+    activePopupData.senses,
+    activeSenseIndex,
+    activeAnchor
+  );
+}
+
+/** Client rect for a popup action button (explain | word-bank). */
+export function getPopupActionRect(action) {
+  const btn = document.querySelector(`#popup [data-action='${action}']`);
+  if (!btn) return null;
+  const rect = btn.getBoundingClientRect();
+  if (rect.width < 4 || rect.height < 4) return null;
+  const padX = 6;
+  const padY = 4;
+  return {
+    top: rect.top - padY,
+    left: rect.left - padX,
+    width: rect.width + padX * 2,
+    height: rect.height + padY * 2,
+    bottom: rect.bottom + padY,
+    right: rect.right + padX
+  };
 }
 
 function bindWordBankButton(popup, word, senses, activeIndex, anchor) {
@@ -210,10 +612,39 @@ function bindWordBankButton(popup, word, senses, activeIndex, anchor) {
         surfaceExample: word
       });
 
-      popup.innerHTML = renderPopupContent(word, senses, activeIndex);
-      bindPopupTabs(popup, word, senses, anchor);
-      bindWordBankButton(popup, word, senses, activeIndex, anchor);
-      positionPopup(popup, anchor);
+      rebindPopup(popup, word, senses, activeIndex, anchor);
+    } catch {
+      btn.disabled = false;
+    }
+  });
+}
+
+function bindKnowThisButton(popup, word, senses, activeIndex, anchor) {
+  const btn = popup.querySelector("[data-action='know-word']");
+  if (!btn) return;
+
+  btn.addEventListener("click", async (e) => {
+    e.stopPropagation();
+
+    if (!isLoggedIn()) {
+      hidePopup();
+      openAuthPanel();
+      return;
+    }
+
+    const sense = senses[activeIndex];
+    if (!sense?.strongs || isWordLearned(sense.strongs)) return;
+
+    btn.disabled = true;
+
+    try {
+      await markWordLearned({
+        strongs: sense.strongs,
+        lemma: sense.lemma,
+        gloss: sense.gloss,
+        surfaceExample: word
+      });
+      rebindPopup(popup, word, senses, activeIndex, anchor);
     } catch {
       btn.disabled = false;
     }
@@ -226,10 +657,8 @@ function bindPopupTabs(popup, word, senses, anchor) {
       e.stopPropagation();
       const index = Number(tab.dataset.index);
       activeSenseIndex = index;
-      popup.innerHTML = renderPopupContent(word, senses, index);
-      bindPopupTabs(popup, word, senses, anchor);
-      bindWordBankButton(popup, word, senses, index, anchor);
-      positionPopup(popup, anchor);
+      activeExplainState = null;
+      rebindPopup(popup, word, senses, index, anchor);
     });
   });
 }
@@ -241,26 +670,28 @@ function refreshOpenPopup() {
   if (popup.style.display !== "block") return;
 
   const { word, senses } = activePopupData;
-  popup.innerHTML = renderPopupContent(word, senses, activeSenseIndex);
-  bindPopupTabs(popup, word, senses, activeAnchor);
-  bindWordBankButton(popup, word, senses, activeSenseIndex, activeAnchor);
-  positionPopup(popup, activeAnchor);
+  rebindPopup(popup, word, senses, activeSenseIndex, activeAnchor);
 }
 
 export function showPopup(data, anchor) {
   const popup = document.getElementById("popup");
 
   if (activeAnchor === anchor && popup.style.display === "block") {
+    if (holdOpenForWalkthrough) return;
     hidePopup();
     return;
   }
 
   if (activeAnchor && activeAnchor !== anchor) {
-    activeAnchor.classList.remove("popup-active");
+    activeAnchor.classList.remove("popup-active", "is-on-white");
   }
 
   activeAnchor = anchor;
+  const onWhite = Boolean(
+    anchor.closest(".daily-vocab-item.is-white, .practice-story-card")
+  );
   anchor.classList.add("popup-active");
+  anchor.classList.toggle("is-on-white", onWhite);
   activeSenseIndex = 0;
 
   const senses = data.senses || [
@@ -274,36 +705,70 @@ export function showPopup(data, anchor) {
 
   activePopupData = { word: data.word, senses };
 
-  popup.innerHTML = renderPopupContent(data.word, senses, activeSenseIndex);
-  bindPopupTabs(popup, data.word, senses, anchor);
-  bindWordBankButton(popup, data.word, senses, activeSenseIndex, anchor);
-  positionPopup(popup, anchor);
+  // Always open the simple view; Explain is opt-in (cache still used when they tap Explain)
+  activeExplainState = null;
+
+  popup.classList.toggle("is-on-white", onWhite);
+  rebindPopup(popup, data.word, senses, activeSenseIndex, anchor);
 }
 
 export function initPopupHandlers(onWordClick) {
   onWordBankChange(() => refreshOpenPopup());
+  onLearnedWordsChange(() => refreshOpenPopup());
 
   document.getElementById("content").addEventListener("click", (e) => {
     const word = e.target.closest(".word");
-    if (!word || word.classList.contains("no-highlight")) return;
+    if (!word) return;
 
     onWordClick(word);
   });
 
   document.getElementById("dailyVocabList")?.addEventListener("click", (e) => {
     const word = e.target.closest(".word");
-    if (!word || word.classList.contains("no-highlight")) return;
+    if (!word) return;
 
     onWordClick(word);
   });
 
-  document.addEventListener("click", (e) => {
-    const popup = document.getElementById("popup");
-    if (popup.style.display !== "block") return;
-    if (popup.contains(e.target)) return;
-    if (e.target.closest(".word")) return;
-    hidePopup();
+  document.getElementById("practiceStoryHebrew")?.addEventListener("click", (e) => {
+    const word = e.target.closest(".word");
+    if (!word) return;
+
+    onWordClick(word);
   });
+
+  // Capture phase so "click off" closes the whole popup even over dense verse text
+  document.addEventListener(
+    "pointerdown",
+    (e) => {
+      const popup = document.getElementById("popup");
+      if (!popup || popup.style.display !== "block") return;
+      if (popup.contains(e.target)) return;
+
+      const word = e.target.closest(".word");
+      if (word && word !== activeAnchor) {
+        // Different word — let the click handler switch the popup
+        return;
+      }
+
+      // Walkthrough is demoing the popup — don't dismiss on outside / same-word taps
+      if (holdOpenForWalkthrough) {
+        if (word && word === activeAnchor) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+        return;
+      }
+
+      // Outside the popup (or the same word again): close fully
+      if (word && word === activeAnchor) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      hidePopup();
+    },
+    true
+  );
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hidePopup();

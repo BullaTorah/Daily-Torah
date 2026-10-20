@@ -4,7 +4,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "openai/gpt-oss-120b";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -42,6 +42,9 @@ For EACH word below, write ONE short sentence in pointed Biblical Hebrew that us
 Rules:
 - Content must be factually accurate about Bible (Tanakh) people, places, objects, or events. No modern or invented stories.
 - Keep the rest of the sentence in SIMPLE, common Biblical Hebrew so only the target vocabulary word is likely hard.
+- Hebrew sentence: at most 6 words. One simple clause only — no lists, no relative clauses, no long name strings.
+- Prefer a short subject–verb–object pattern.
+- English translation must be equally brief (one short sentence).
 - Provide a clear, natural English translation.
 - Return the exact Hebrew surface form of the target word as it appears in your sentence (target_surface).
 - Prefer common forms of the target word.

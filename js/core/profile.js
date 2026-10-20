@@ -62,6 +62,19 @@ export function getProfileFirstName(user = getUser()) {
   return toFirstName(fromMeta) || toFirstName(user.email?.split("@")[0]) || "";
 }
 
+/** True only if they chose a name (not email fallback). Guests → false. */
+export function hasChosenDisplayName(user = getUser()) {
+  if (cachedFirstName) return true;
+  if (!user) return false;
+
+  const fromMeta =
+    user.user_metadata?.first_name ||
+    user.user_metadata?.display_name ||
+    user.user_metadata?.full_name;
+
+  return Boolean(toFirstName(fromMeta));
+}
+
 export function clearProfileCache() {
   cachedFirstName = null;
 }

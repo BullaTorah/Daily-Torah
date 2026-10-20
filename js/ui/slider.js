@@ -2,7 +2,11 @@ import { DIFFICULTY_STEPS } from "../core/difficulty.js";
 import { persistUserSettings } from "../core/user-settings.js";
 import { rerenderCurrent, setRenderState } from "./render.js";
 
+const DIFFICULTY_TAB_BASE_GAP_MS = 100;
+const DIFFICULTY_TAB_GAP_MULTIPLIER = 1.25;
+
 let currentDifficulty = 0;
+let difficultyTabAnimTimers = [];
 
 export function getCurrentDifficulty() {
   return currentDifficulty;
@@ -16,7 +20,41 @@ function updateTabUI(value) {
   });
 }
 
-export function setDifficulty(value, { persist = true, rerender = true } = {}) {
+function clearDifficultyTabAnimation() {
+  difficultyTabAnimTimers.forEach((id) => clearTimeout(id));
+  difficultyTabAnimTimers = [];
+}
+
+/** Walk the active tab from Beginner up to target (same cadence as aliyah numbers). */
+export function animateDifficultyTabs(targetValue = currentDifficulty) {
+  clearDifficultyTabAnimation();
+
+  const targetIndex = DIFFICULTY_STEPS.findIndex((s) => s.value === targetValue);
+  const finalIndex = targetIndex < 0 ? 0 : targetIndex;
+  const finalValue = DIFFICULTY_STEPS[finalIndex].value;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    updateTabUI(finalValue);
+    return 0;
+  }
+
+  updateTabUI(DIFFICULTY_STEPS[0].value);
+  if (finalIndex <= 0) return 0;
+
+  let delay = 0;
+  let gap = DIFFICULTY_TAB_BASE_GAP_MS;
+
+  for (let step = 1; step <= finalIndex; step += 1) {
+    delay += gap;
+    const value = DIFFICULTY_STEPS[step].value;
+    difficultyTabAnimTimers.push(setTimeout(() => updateTabUI(value), delay));
+    gap *= DIFFICULTY_TAB_GAP_MULTIPLIER;
+  }
+
+  return delay;
+}
+
+export function setDifficulty(value, { persist = true, rerender = true, animate = false } = {}) {
   currentDifficulty = value;
   setRenderState({ difficulty: value });
 
@@ -24,7 +62,12 @@ export function setDifficulty(value, { persist = true, rerender = true } = {}) {
     persistUserSettings({ difficulty: value });
   }
 
-  updateTabUI(value);
+  if (animate) {
+    animateDifficultyTabs(value);
+  } else {
+    clearDifficultyTabAnimation();
+    updateTabUI(value);
+  }
 
   if (rerender) {
     rerenderCurrent();

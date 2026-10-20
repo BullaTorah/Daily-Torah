@@ -301,4 +301,9 @@ export function toggleVerseComplete(strongs) {
   return completed.has(id) ? unmarkVerseComplete(id) : markVerseComplete(id);
 }
 
+/** Same order as daily practice: needs-work first, then least recently practiced. */
+export function selectPracticeWords(count) {
+  return pickBankWords(count);
+}
+
 export { stripNiqqud };

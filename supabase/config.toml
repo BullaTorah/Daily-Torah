@@ -3,3 +3,6 @@
 
 [functions.daily-vocab]
 verify_jwt = true
+
+[functions.practice-story]
+verify_jwt = true

@@ -2,6 +2,10 @@ import { stripSefariaArtifacts } from "../core/lookup.js";
 import { resolveWord } from "../core/lexicon.js";
 import { tokenizeHebrewVerse } from "../core/tokenize.js";
 import { shouldHideWord } from "../core/difficulty.js";
+import {
+  createVerseBulkActions,
+  initVerseBulkActions
+} from "./verse-bulk-actions.js";
 
 let currentDifficulty = 0;
 let currentTitle = "";
@@ -47,6 +51,7 @@ function toHebrewNumeral(num) {
 
 export function initRender() {
   initVerseNumInteraction();
+  initVerseBulkActions();
 }
 
 let verseNumInteractionBound = false;
@@ -162,15 +167,42 @@ function renderHebrew(verse, {
         : shouldHideWord(rank, currentDifficulty);
 
     const el = document.createElement("span");
+    const forceMode = Boolean(forceId || forceSurfacePlain);
+    // Practice sentences: only the target word is tappable; fillers are plain text
+    if (forceMode && !isTarget) {
+      el.className = "practice-token";
+      el.textContent = token;
+      container.appendChild(el);
+      container.appendChild(document.createTextNode(" "));
+      return;
+    }
+
+    // no-highlight only controls underlines; every word stays clickable
     el.className = hide ? "word no-highlight" : "word";
     el.textContent = token;
-    if (!hide) {
-      el.dataset.word = token;
-      if (verse.ref) el.dataset.verseRef = verse.ref;
-      el.dataset.tokenIndex = String(index + 1);
-      if (sense.strongs || tokenMeta?.strongs || forceId) {
-        el.dataset.strongs = sense.strongs || tokenMeta?.strongs || forceId;
-      }
+    el.dataset.word = token;
+    if (verse.ref) el.dataset.verseRef = verse.ref;
+    el.dataset.tokenIndex = String(index + 1);
+    if (sense.strongs || tokenMeta?.strongs || (isTarget && forceId)) {
+      el.dataset.strongs = sense.strongs || tokenMeta?.strongs || forceId;
+    }
+    const segments =
+      (Array.isArray(sense.segments) && sense.segments.length
+        ? sense.segments
+        : null) ||
+      (Array.isArray(tokenMeta?.segments) && tokenMeta.segments.length
+        ? tokenMeta.segments
+        : null) ||
+      (Array.isArray(tokenMeta?.sense?.segments) &&
+      tokenMeta.sense.segments.length
+        ? tokenMeta.sense.segments
+        : null);
+    if (segments?.length) {
+      el.dataset.segments = JSON.stringify(segments);
+    }
+    if (sense.translation || tokenMeta?.sense?.translation) {
+      el.dataset.translation =
+        sense.translation || tokenMeta.sense.translation;
     }
 
     if (animate) {
@@ -189,6 +221,10 @@ function renderHebrew(verse, {
 
 const WORD_REVEAL_STAGGER_MS = 200;
 const WORD_REVEAL_ACCELERATION = 1.15;
+/** Beat after a verse's last Hebrew word before its English appears. */
+const ENGLISH_REVEAL_GAP_MS = 160;
+/** Hold after English before the next verse's Hebrew starts. */
+const ENGLISH_HOLD_MS = 320;
 let wordRevealTimers = [];
 
 function clearWordRevealTimers() {
@@ -196,35 +232,92 @@ function clearWordRevealTimers() {
   wordRevealTimers = [];
 }
 
+function wordStaggerAfter(wordIndex) {
+  return WORD_REVEAL_STAGGER_MS / WORD_REVEAL_ACCELERATION ** Math.max(0, wordIndex);
+}
+
+/**
+ * Top-to-bottom plan: each verse's Hebrew words, then that verse's English,
+ * then the next verse.
+ * @returns {{ steps: { kind: string, el: Element, delay: number }[], totalMs: number }}
+ */
+function buildRevealPlan(content) {
+  const steps = [];
+  let t = 0;
+  let wordIndex = 0;
+
+  content.querySelectorAll(".verse").forEach((verse) => {
+    const words = [...verse.querySelectorAll(".word.word-reveal")];
+    const english = verse.querySelector(".english.english-reveal");
+
+    words.forEach((word, i) => {
+      steps.push({ kind: "word", el: word, delay: t });
+      if (i < words.length - 1) {
+        t += wordStaggerAfter(wordIndex);
+      }
+      wordIndex += 1;
+    });
+
+    if (english) {
+      const englishAt = words.length ? t + ENGLISH_REVEAL_GAP_MS : t;
+      steps.push({ kind: "english", el: english, delay: englishAt });
+      t = englishAt + ENGLISH_HOLD_MS;
+    } else if (words.length) {
+      t += wordStaggerAfter(wordIndex - 1);
+    }
+  });
+
+  return { steps, totalMs: t };
+}
+
+export function wordRevealDurationMs(wordCount) {
+  const n = Math.max(0, Number(wordCount) || 0);
+  if (n <= 1) return 0;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return 0;
+
+  let delay = 0;
+  for (let i = 0; i < n - 1; i += 1) {
+    delay += wordStaggerAfter(i);
+  }
+  return delay;
+}
+
+function revealWord(word) {
+  word.textContent = word.dataset.revealText || "";
+  word.classList.add("word-shown");
+}
+
+function revealEnglish(el) {
+  el.classList.add("english-shown");
+}
+
 function scheduleWordReveal(content) {
   clearWordRevealTimers();
 
-  const words = [...content.querySelectorAll(".word.word-reveal")];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const { steps, totalMs } = buildRevealPlan(content);
 
-  let cumulativeDelay = 0;
+  if (reducedMotion) {
+    steps.forEach((step) => {
+      if (step.kind === "word") revealWord(step.el);
+      else revealEnglish(step.el);
+    });
+    return 0;
+  }
 
-  words.forEach((word, index) => {
-    const reveal = () => {
-      word.textContent = word.dataset.revealText || "";
-      word.classList.add("word-shown");
-    };
-
-    if (reducedMotion) {
-      reveal();
-      return;
-    }
-
-    const timer = window.setTimeout(reveal, cumulativeDelay);
+  steps.forEach((step) => {
+    const timer = window.setTimeout(() => {
+      if (step.kind === "word") revealWord(step.el);
+      else revealEnglish(step.el);
+    }, step.delay);
     wordRevealTimers.push(timer);
-
-    if (index < words.length - 1) {
-      cumulativeDelay += WORD_REVEAL_STAGGER_MS / WORD_REVEAL_ACCELERATION ** index;
-    }
   });
+
+  return totalMs;
 }
 
-export function render(title, verses, { animate = false } = {}) {
+/** @returns {{ entranceEndMs: number }} */
+export function render(title, verses, { animate = false, animateDelay = 0 } = {}) {
   if (title !== undefined) currentTitle = title;
   if (verses !== undefined) globalVerses = verses;
 
@@ -237,7 +330,7 @@ export function render(title, verses, { animate = false } = {}) {
 
   let wordOffset = 0;
 
-  globalVerses.forEach((v) => {
+  globalVerses.forEach((v, verseIndex) => {
     const verse = document.createElement("div");
     verse.className = "verse";
 
@@ -259,9 +352,10 @@ export function render(title, verses, { animate = false } = {}) {
     num.appendChild(numLabel);
 
     const en = document.createElement("div");
-    en.className = "english";
+    en.className = animate ? "english english-reveal" : "english";
     en.textContent = stripSefariaArtifacts(v.en);
 
+    verse.appendChild(createVerseBulkActions({ showHeading: verseIndex === 0 }));
     verse.appendChild(num);
     verse.appendChild(he);
     verse.appendChild(en);
@@ -271,15 +365,24 @@ export function render(title, verses, { animate = false } = {}) {
   if (animate) {
     document.body.classList.add("reading-animate");
     document.body.classList.remove("reading-loaded");
-    scheduleWordReveal(content);
     requestAnimationFrame(() => {
       document.body.classList.add("reading-loaded");
     });
-    return;
+    const delay = Math.max(0, Number(animateDelay) || 0);
+    const { totalMs: revealMs } = buildRevealPlan(content);
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (delay > 0 && !reduced) {
+      const timer = window.setTimeout(() => scheduleWordReveal(content), delay);
+      wordRevealTimers.push(timer);
+    } else {
+      scheduleWordReveal(content);
+    }
+    return { entranceEndMs: delay + (reduced ? 0 : revealMs) };
   }
 
   document.body.classList.remove("reading-animate");
   document.body.classList.add("reading-loaded");
+  return { entranceEndMs: 0 };
 }
 
 /** Render one verse-like block into a container (daily vocab practice). */

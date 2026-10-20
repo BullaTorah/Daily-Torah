@@ -1,3 +1,5 @@
+import { formatDivineNameEnglish } from "./divine-name.js";
+
 let wordLookup = {};
 let lexicon = {};
 let frequency = {};
@@ -166,7 +168,7 @@ function buildSense(strongs) {
   return {
     strongs: id,
     lemma: entry?.lemma || null,
-    gloss: entry?.gloss || "—",
+    gloss: formatDivineNameEnglish(entry?.gloss || "—"),
     pron: entry?.pron || null,
     rank: freq?.rank ?? null
   };

@@ -14,13 +14,21 @@ function escapeHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+let onPracticeStory = null;
+
 function getElements() {
   return {
     panel: document.getElementById("wordBankPanel"),
     list: document.getElementById("wordBankList"),
     empty: document.getElementById("wordBankEmpty"),
-    guest: document.getElementById("wordBankGuest")
+    guest: document.getElementById("wordBankGuest"),
+    storyBtn: document.getElementById("wordBankStoryBtn")
   };
+}
+
+function setStoryButtonVisible(visible) {
+  const { storyBtn } = getElements();
+  if (storyBtn) storyBtn.hidden = !visible;
 }
 
 function closePanel() {
@@ -42,6 +50,7 @@ function renderWordBank() {
     list.innerHTML = "";
     if (empty) empty.hidden = true;
     if (guest) guest.hidden = false;
+    setStoryButtonVisible(false);
     return;
   }
 
@@ -52,10 +61,12 @@ function renderWordBank() {
   if (!words.length) {
     list.innerHTML = "";
     if (empty) empty.hidden = false;
+    setStoryButtonVisible(false);
     return;
   }
 
   if (empty) empty.hidden = true;
+  setStoryButtonVisible(true);
 
   list.innerHTML = words
     .map(
@@ -66,7 +77,7 @@ function renderWordBank() {
           <div class="word-bank-gloss">${escapeHtml(item.gloss || "—")}</div>
           <div class="word-bank-meta">Strong's ${escapeHtml(item.strongs)}</div>
         </div>
-        <button type="button" class="word-bank-remove" aria-label="Remove from word bank">Remove</button>
+        <button type="button" class="word-bank-remove" aria-label="Remove from Practice words">Remove</button>
       </li>`
     )
     .join("");
@@ -87,11 +98,17 @@ function renderWordBank() {
   });
 }
 
-export function initWordBankPanel() {
-  const { panel } = getElements();
+export function initWordBankPanel({ onPracticeStory: onStory } = {}) {
+  onPracticeStory = onStory || null;
+  const { panel, storyBtn } = getElements();
 
   panel?.querySelectorAll("[data-word-bank-close]").forEach((btn) => {
     btn.addEventListener("click", closePanel);
+  });
+
+  storyBtn?.addEventListener("click", () => {
+    closePanel();
+    onPracticeStory?.();
   });
 
   document.getElementById("wordBankSignInBtn")?.addEventListener("click", () => {

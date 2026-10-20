@@ -10,10 +10,12 @@ import {
   updatePassword
 } from "../core/auth.js";
 import { getProfileFirstName, loadUserProfile, saveProfileFirstName, clearProfileCache } from "../core/profile.js";
+import { clearLearnedWords } from "../core/word-bank.js";
 
 let authConfigured = false;
 let onOpenWordBank = null;
 let authMode = "signin";
+let pendingAfterAuth = null;
 
 function getElements() {
   return {
@@ -43,6 +45,7 @@ function getElements() {
     signUpTab: document.getElementById("authSignUpTab"),
     message: document.getElementById("authMessage"),
     wordBankMenuBtn: document.getElementById("authWordBankBtn"),
+    clearKnownBtn: document.getElementById("authClearKnownBtn"),
     signOutBtn: document.getElementById("authSignOutBtn")
   };
 }
@@ -71,11 +74,17 @@ function resetModalForm() {
   if (confirmPasswordInput) confirmPasswordInput.value = "";
 }
 
-function closeModal() {
+function closeModal({ ranSuccess = false } = {}) {
   const { modal } = getElements();
   if (modal) modal.hidden = true;
   resetModalForm();
   setAuthMode("signin");
+
+  const cb = pendingAfterAuth;
+  pendingAfterAuth = null;
+  if (!ranSuccess && typeof cb?.onClose === "function") {
+    cb.onClose();
+  }
 }
 
 function setAuthMode(mode) {
@@ -120,7 +129,7 @@ function setAuthMode(mode) {
       modalLead.textContent = "Enter a new password for your account.";
     } else {
       modalLead.textContent = isSignup
-        ? "Create an account to save settings and build your word bank."
+        ? "Create an account to save settings and build your Practice words."
         : "Welcome back. Enter your email and password.";
     }
   }
@@ -203,13 +212,22 @@ function setAuthMode(mode) {
   }
 }
 
-function openModal(mode = "signin") {
-  const { modal } = getElements();
+function openModal(mode = "signin", options = {}) {
+  pendingAfterAuth =
+    options.onSuccess || options.onClose
+      ? { onSuccess: options.onSuccess, onClose: options.onClose }
+      : null;
+
+  const { modal, firstNameInput } = getElements();
   if (!modal) return;
   resetModalForm();
   modal.hidden = false;
   closeMenu();
   setAuthMode(mode);
+
+  if (options.firstName && firstNameInput) {
+    firstNameInput.value = String(options.firstName).trim();
+  }
 }
 
 function showModalMessage(text) {
@@ -270,6 +288,7 @@ export function initAuthPanel(options = {}) {
     confirmPasswordInput,
     submitBtn,
     wordBankMenuBtn,
+    clearKnownBtn,
     signOutBtn
   } = getElements();
 
@@ -351,7 +370,10 @@ export function initAuthPanel(options = {}) {
 
         if (session) {
           await saveProfileFirstName(firstName);
-          closeModal();
+          const success = pendingAfterAuth?.onSuccess;
+          pendingAfterAuth = null;
+          closeModal({ ranSuccess: true });
+          success?.();
           return;
         }
 
@@ -368,7 +390,10 @@ export function initAuthPanel(options = {}) {
       }
 
       await signInWithPassword({ email, password });
-      closeModal();
+      const success = pendingAfterAuth?.onSuccess;
+      pendingAfterAuth = null;
+      closeModal({ ranSuccess: true });
+      success?.();
     } catch (err) {
       showModalMessage(err.message || "Could not complete sign in.");
       if (form) form.hidden = false;
@@ -380,6 +405,23 @@ export function initAuthPanel(options = {}) {
   wordBankMenuBtn?.addEventListener("click", () => {
     closeMenu();
     onOpenWordBank?.();
+  });
+
+  clearKnownBtn?.addEventListener("click", async () => {
+    closeMenu();
+    if (!isLoggedIn()) return;
+    const ok = window.confirm(
+      "Clear all Known words for your account? Your Practice words are left alone."
+    );
+    if (!ok) return;
+    try {
+      clearKnownBtn.disabled = true;
+      await clearLearnedWords();
+    } catch (err) {
+      window.alert(err?.message || "Could not clear known words.");
+    } finally {
+      clearKnownBtn.disabled = false;
+    }
   });
 
   signOutBtn?.addEventListener("click", async () => {
@@ -422,6 +464,6 @@ export function initAuthPanel(options = {}) {
   }
 }
 
-export function openAuthPanel() {
-  openModal("signin");
+export function openAuthPanel(mode = "signin", options = {}) {
+  openModal(mode, options);
 }

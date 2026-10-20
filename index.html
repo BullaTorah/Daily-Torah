@@ -9,24 +9,80 @@
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap" rel="stylesheet" />
+<script>
+  try {
+    var t = localStorage.getItem("bulla-theme");
+    if (t) document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
 </head>
 
-<body>
+<body class="home-open">
+
+<div id="homeOverlay" class="home-overlay" role="dialog" aria-labelledby="homeHeadline" aria-modal="true">
+  <div class="home-overlay-chrome text-column">
+    <label class="theme-control theme-control-mobile">
+      <span class="theme-control-label">Theme</span>
+      <select id="themeSelectHome" class="theme-select" aria-label="Choose color theme"></select>
+    </label>
+    <div class="home-overlay-chrome-end">
+      <button type="button" id="homeWalkthroughBtn" class="home-walkthrough-btn" hidden>How it works</button>
+      <button type="button" id="homeSignInBtn" class="home-sign-in-btn">Sign in</button>
+    </div>
+  </div>
+  <div class="home-overlay-main">
+    <div class="site-logo home-logo">BULLA TORAH</div>
+    <h1 id="homeHeadline" class="home-headline">You can read the Torah.</h1>
+    <p class="home-lead">Start with a few verses a day. Feel more and more comfortable. Track your progress.</p>
+    <div id="homeProgress" class="home-progress torah-progress" hidden>
+      <div class="home-progress-label">
+        <span>Words you know</span>
+        <span id="homeProgressMeta" class="torah-progress-meta"></span>
+      </div>
+      <div class="home-progress-track torah-progress-track" aria-hidden="true">
+        <div id="homeProgressMarkers" class="torah-progress-markers"></div>
+        <div id="homeProgressFill" class="home-progress-fill torah-progress-fill"></div>
+      </div>
+    </div>
+    <div class="home-actions">
+      <div class="home-actions-col home-actions-reading">
+        <p class="home-actions-label">Read</p>
+        <button type="button" id="homePlacementBtn" class="home-cta home-cta-placement" hidden>Find my level</button>
+        <button type="button" id="homeThreeBtn" class="home-cta home-cta-primary">Read three verses</button>
+        <button type="button" id="homeTodayBtn" class="home-cta home-cta-secondary">Today’s portion</button>
+      </div>
+      <div class="home-actions-col home-actions-practice">
+        <p class="home-actions-label">Practice</p>
+        <button type="button" id="homeWeeklyFlashBtn" class="home-cta home-cta-weekly" hidden>Next 10 words</button>
+        <button type="button" id="homePracticeBtn" class="home-cta home-cta-tertiary" hidden>Practice words</button>
+        <button type="button" id="homeStoryBtn" class="home-cta home-cta-story" hidden>Practice story</button>
+      </div>
+    </div>
+    <p id="homeLoadingHint" class="home-loading-hint" hidden>Loading today’s reading…</p>
+  </div>
+</div>
 
 <div id="topBar">
   <div class="text-column">
     <div class="header-chrome">
-      <div id="siteLogo" class="site-logo">BULLA TORAH</div>
-      <div id="authBar" hidden>
-      <button type="button" id="authSignInBtn" class="auth-text-btn">Sign in</button>
-      <button type="button" id="authProfileBtn" class="auth-profile-btn" hidden aria-haspopup="true" aria-expanded="false">
-        <span id="authProfileName"></span>
-      </button>
-      <div id="authMenu" class="auth-menu" hidden role="menu">
-        <button type="button" id="authWordBankBtn" role="menuitem">Word bank</button>
-        <button type="button" id="authSignOutBtn" role="menuitem">Sign out</button>
+      <button type="button" id="siteLogo" class="site-logo" aria-label="Home">BULLA TORAH</button>
+      <div class="header-chrome-end">
+        <label class="theme-control theme-control-mobile">
+          <span class="theme-control-label">Theme</span>
+          <select id="themeSelectHeader" class="theme-select" aria-label="Choose color theme"></select>
+        </label>
+        <div id="authBar" hidden>
+          <button type="button" id="authSignInBtn" class="auth-text-btn">Sign in</button>
+          <button type="button" id="authProfileBtn" class="auth-profile-btn" hidden aria-haspopup="true" aria-expanded="false">
+            <span id="authProfileName"></span>
+          </button>
+          <div id="authMenu" class="auth-menu" hidden role="menu">
+            <button type="button" id="authWordBankBtn" role="menuitem">Practice words</button>
+            <button type="button" id="authClearKnownBtn" role="menuitem">Clear Known words</button>
+            <button type="button" id="authSignOutBtn" role="menuitem">Sign out</button>
+          </div>
+        </div>
       </div>
-    </div>
     </div>
 
     <h1 id="title"></h1>
@@ -45,8 +101,19 @@
   </div>
 </div>
 
-<div id="difficultyBar">
-  <div id="difficultyTabs" class="segment-tabs text-column" role="tablist"></div>
+<div id="difficultySticky">
+  <div id="difficultyBar">
+    <div id="difficultyTabs" class="segment-tabs text-column" role="tablist"></div>
+  </div>
+  <div id="difficultyProgress" class="difficulty-progress text-column" hidden>
+    <div class="difficulty-progress-track" aria-hidden="true">
+      <div id="difficultyProgressFill" class="difficulty-progress-fill"></div>
+    </div>
+    <div class="difficulty-progress-meta">
+      <span>Words I know:</span>
+      <span id="difficultyProgressMeta"></span>
+    </div>
+  </div>
 </div>
 
 <div class="text-column">
@@ -55,6 +122,44 @@
 
 <div id="content"></div>
 <div id="popup"></div>
+
+<div id="readingOutro" class="reading-outro">
+  <button type="button" id="continuePortionBtn" class="continue-portion-btn" hidden>
+    <span class="continue-portion-label">Continue reading the portion</span>
+  </button>
+
+  <div id="readingFeedback" class="reading-feedback" hidden>
+    <div class="reading-feedback-panel">
+      <div data-step="ask" class="reading-feedback-ask">
+        <p id="readingFeedbackAskPrompt" class="reading-feedback-prompt">How well did you understand these verses?</p>
+        <div class="reading-feedback-tabs-wrap">
+          <div class="segment-tabs reading-feedback-tabs" role="tablist" aria-label="How well did you understand">
+            <button type="button" class="segment-tab" role="tab" aria-selected="false" data-rating="all">All of it</button>
+            <button type="button" class="segment-tab" role="tab" aria-selected="false" data-rating="most">Most of it</button>
+            <button type="button" class="segment-tab" role="tab" aria-selected="false" data-rating="little">Very little</button>
+          </div>
+        </div>
+      </div>
+      <div data-step="encourage" class="reading-feedback-encourage" hidden>
+        <p class="reading-feedback-encourage-text">Great work!</p>
+        <div class="reading-feedback-progress torah-progress" hidden>
+          <div class="home-progress-label">
+            <span>Words you know</span>
+            <span id="feedbackProgressMeta" class="torah-progress-meta"></span>
+          </div>
+          <div class="home-progress-track torah-progress-track" aria-hidden="true">
+            <div id="feedbackProgressMarkers" class="torah-progress-markers"></div>
+            <div id="feedbackProgressFill" class="home-progress-fill torah-progress-fill"></div>
+          </div>
+        </div>
+        <div class="reading-feedback-signin" hidden>
+          <p class="reading-feedback-signin-lead">Sign in to save the words you already know.</p>
+          <button type="button" id="feedbackSignInBtn" class="reading-feedback-signin-btn">Sign in</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="authModal" class="auth-modal" hidden>
   <div class="auth-modal-backdrop" data-auth-close></div>
@@ -68,8 +173,8 @@
     <p id="authModalLead" class="auth-modal-lead">Welcome back. Enter your email and password.</p>
     <form id="authForm">
       <div id="authFirstNameField" hidden>
-        <label for="authFirstName">First name</label>
-        <input type="text" id="authFirstName" name="given-name" autocomplete="given-name" placeholder="First name" />
+        <label for="authFirstName">Username</label>
+        <input type="text" id="authFirstName" name="username" autocomplete="username" placeholder="Username" />
       </div>
       <label for="authEmail">Email</label>
       <input type="email" id="authEmail" name="email" autocomplete="email" required placeholder="you@example.com" />
@@ -97,15 +202,69 @@
   <div class="word-bank-backdrop" data-word-bank-close></div>
   <div class="word-bank-card" role="dialog" aria-labelledby="wordBankTitle">
     <div class="word-bank-header">
-      <h2 id="wordBankTitle">Word bank</h2>
+      <h2 id="wordBankTitle">Practice words</h2>
+      <button type="button" id="wordBankStoryBtn" class="word-bank-story-btn" hidden>Practice story</button>
       <button type="button" class="word-bank-close" data-word-bank-close aria-label="Close">×</button>
     </div>
     <p id="wordBankGuest" class="word-bank-guest" hidden>
       Sign in to save vocabulary you want to practice.
       <button type="button" id="wordBankSignInBtn">Sign in</button>
     </p>
-    <p id="wordBankEmpty" class="word-bank-empty" hidden>No saved words yet. Tap a word while reading and choose “Save to word list”.</p>
+    <p id="wordBankEmpty" class="word-bank-empty" hidden>No Practice words yet. Tap a word while reading and choose “Add to Practice words”.</p>
     <ul id="wordBankList" class="word-bank-list"></ul>
+  </div>
+</div>
+
+<div id="walkthroughPanel" class="walkthrough-panel" hidden>
+  <div class="walkthrough-backdrop" data-walkthrough-close></div>
+  <div id="walkthroughHole" class="walkthrough-hole" hidden aria-hidden="true"></div>
+  <div class="walkthrough-card" role="dialog" aria-labelledby="walkthroughTitle" aria-modal="true">
+    <button type="button" class="walkthrough-close" data-walkthrough-close aria-label="Close">×</button>
+    <p id="walkthroughStatus" class="walkthrough-status">1 of 6</p>
+    <h2 id="walkthroughTitle" class="walkthrough-title"></h2>
+    <div id="walkthroughVisual" class="walkthrough-visual" hidden></div>
+    <p id="walkthroughBody" class="walkthrough-body"></p>
+    <div class="walkthrough-actions">
+      <button type="button" id="walkthroughSkipBtn" class="walkthrough-skip-btn">Skip</button>
+      <div class="walkthrough-actions-main">
+        <button type="button" id="walkthroughBackBtn" class="walkthrough-back-btn" hidden>Back</button>
+        <button type="button" id="walkthroughNextBtn" class="walkthrough-next-btn">Next</button>
+      </div>
+    </div>
+  </div>
+  <div id="walkthroughTip" class="walkthrough-tip" hidden role="dialog" aria-labelledby="walkthroughTipTitle">
+    <p id="walkthroughTipStatus" class="walkthrough-tip-status">1 of 6</p>
+    <h3 id="walkthroughTipTitle" class="walkthrough-tip-title"></h3>
+    <p id="walkthroughTipBody" class="walkthrough-tip-body"></p>
+    <div class="walkthrough-tip-actions">
+      <button type="button" id="walkthroughTipSkipBtn" class="walkthrough-skip-btn">Skip</button>
+      <div class="walkthrough-actions-main">
+        <button type="button" id="walkthroughTipBackBtn" class="walkthrough-back-btn" hidden>Back</button>
+        <button type="button" id="walkthroughTipNextBtn" class="walkthrough-next-btn">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="placementPanel" class="placement-panel" hidden>
+  <div class="placement-backdrop" data-placement-close></div>
+  <div class="placement-card" role="dialog" aria-labelledby="placementTitle" aria-modal="true">
+    <button type="button" class="placement-close" data-placement-close aria-label="Close">×</button>
+    <div id="placementAsk" class="placement-ask">
+      <p id="placementStatus" class="placement-status">1 of 8</p>
+      <h2 id="placementTitle" class="placement-title">What does this word mean?</h2>
+      <p id="placementLemma" class="placement-lemma" lang="he" dir="rtl"></p>
+      <div id="placementChoices" class="placement-choices"></div>
+    </div>
+    <div id="placementResult" class="placement-result" hidden>
+      <h2 id="placementResultTitle" class="placement-result-title"></h2>
+      <p id="placementResultLead" class="placement-result-lead"></p>
+      <div id="placementUsernameField" class="placement-username-field" hidden>
+        <label for="placementUsername">Choose a username</label>
+        <input type="text" id="placementUsername" name="username" autocomplete="username" maxlength="40" placeholder="Username" />
+      </div>
+      <button type="button" id="placementContinueBtn" class="placement-continue-btn">Read three verses</button>
+    </div>
   </div>
 </div>
 
@@ -124,6 +283,66 @@
       <button type="button" id="dailyVocabNextBtn" class="daily-vocab-next-btn" hidden>Next</button>
     </div>
   </div>
+</div>
+
+<div id="practiceStoryPanel" class="practice-story-panel" hidden>
+  <div class="practice-story-backdrop" data-practice-story-close></div>
+  <div class="practice-story-card" role="dialog" aria-labelledby="practiceStoryTitle" aria-modal="true">
+    <div class="practice-story-header">
+      <h2 id="practiceStoryTitle">Practice story</h2>
+      <button type="button" class="practice-story-close" data-practice-story-close aria-label="Close">×</button>
+    </div>
+    <p id="practiceStoryStatus" class="practice-story-status" hidden></p>
+    <div class="practice-story-body">
+      <p id="practiceStoryLead" class="practice-story-lead"></p>
+      <p id="practiceStoryNote" class="practice-story-note" hidden></p>
+      <div id="practiceStoryHebrew" class="practice-story-hebrew hebrew" lang="he" dir="rtl"></div>
+      <p id="practiceStoryEnglish" class="practice-story-english english"></p>
+      <p id="practiceStoryMissing" class="practice-story-missing" hidden></p>
+    </div>
+    <div class="practice-story-footer">
+      <button type="button" id="practiceStoryNewBtn" class="practice-story-new-btn" hidden>New story</button>
+    </div>
+  </div>
+</div>
+
+<div id="weeklyFlashPanel" class="weekly-flash-panel" hidden>
+  <div class="weekly-flash-backdrop" data-weekly-flash-close></div>
+  <div class="weekly-flash-card" role="dialog" aria-labelledby="weeklyFlashTitle" aria-modal="true">
+    <div class="weekly-flash-header">
+      <h2 id="weeklyFlashTitle">Next 10 words</h2>
+      <button type="button" class="weekly-flash-close" data-weekly-flash-close aria-label="Close">×</button>
+    </div>
+    <p id="weeklyFlashStatus" class="weekly-flash-status" hidden></p>
+    <p class="weekly-flash-lead">Flip through ten of the most common words. Mark the ones you know — the next set unlocks when all ten are known.</p>
+
+    <div id="weeklyFlashStage" class="weekly-flash-stage">
+      <p id="weeklyFlashLemma" class="weekly-flash-lemma" lang="he" dir="rtl"></p>
+      <p id="weeklyFlashGloss" class="weekly-flash-gloss" hidden></p>
+      <div class="weekly-flash-actions">
+        <button type="button" id="weeklyFlashFlipBtn" class="weekly-flash-flip-btn">Show meaning</button>
+        <button type="button" id="weeklyFlashKnowBtn" class="weekly-flash-know-btn">I know this</button>
+        <button type="button" id="weeklyFlashStillBtn" class="weekly-flash-still-btn">Still learning</button>
+      </div>
+      <div class="weekly-flash-nav">
+        <button type="button" id="weeklyFlashPrevBtn" class="weekly-flash-prev-btn" hidden>Previous</button>
+        <button type="button" id="weeklyFlashNextBtn" class="weekly-flash-next-btn" hidden>Next</button>
+      </div>
+    </div>
+
+    <div id="weeklyFlashDone" class="weekly-flash-done" hidden>
+      <p id="weeklyFlashDoneLead" class="weekly-flash-done-lead"></p>
+      <div class="weekly-flash-done-actions">
+        <button type="button" id="weeklyFlashNextSetBtn" class="weekly-flash-next-set-btn">Next 10 words</button>
+        <button type="button" id="weeklyFlashKeepBtn" class="weekly-flash-keep-btn">Not yet</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="themeDock" class="theme-dock" aria-label="Color theme preview">
+  <span class="theme-dock-label">Theme</span>
+  <select id="themeSelect" class="theme-select" aria-label="Choose color theme"></select>
 </div>
 
 <script type="module" src="js/app.js"></script>

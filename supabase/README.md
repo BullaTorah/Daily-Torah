@@ -5,7 +5,10 @@ One-time setup for user profiles, settings sync, and word bank.
 ## 1. Create project
 
 1. Go to [supabase.com](https://supabase.com) and create a project.
-2. Open **SQL Editor** and run [migrations/001_user_profiles.sql](migrations/001_user_profiles.sql).
+2. Open **SQL Editor** and run the migrations in order:
+   [001_user_profiles.sql](migrations/001_user_profiles.sql),
+   [002_learned_words.sql](migrations/002_learned_words.sql),
+   then (when resetting Known Words) [003_reset_learned_words.sql](migrations/003_reset_learned_words.sql).
 
 ## 2. Enable auth
 
