@@ -2439,9 +2439,12 @@ html.mobile-preview .popup-explain-he {
   margin-left: auto;
 }
 
-.weekly-flash-still-btn,
 .weekly-flash-keep-btn {
   color: var(--text-muted);
+}
+
+.weekly-flash-still-btn {
+  color: var(--text-color);
 }
 
 .weekly-flash-done-lead {
