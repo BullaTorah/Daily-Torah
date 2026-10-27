@@ -31,6 +31,20 @@ export function shouldHideWord(rank, level) {
 }
 
 /**
+ * Map known-word count → DIFFICULTY_STEPS value using the same bands as the
+ * Words you know progress bar (for practice-story filler ceilings, etc.).
+ */
+export function difficultyFromKnownCount(learnedCount) {
+  const n = Math.max(0, Number(learnedCount) || 0);
+  const stops = TORAH_PROGRESS_BOUNDARIES;
+  // stops: [0, 200, 500, 1200, TOTAL] → bands Beginner…Advanced
+  if (n < stops[1]) return DIFFICULTY_STEPS[0].value;
+  if (n < stops[2]) return DIFFICULTY_STEPS[1].value;
+  if (n < stops[3]) return DIFFICULTY_STEPS[2].value;
+  return DIFFICULTY_STEPS[3].value;
+}
+
+/**
  * Map known-word count → bar fill %.
  * Four equal visual sections; word densities decrease across bands.
  */

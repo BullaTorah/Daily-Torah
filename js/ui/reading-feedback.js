@@ -1,10 +1,10 @@
 import { isLoggedIn } from "../core/auth.js";
-import { shouldHideWord } from "../core/difficulty.js";
 import { resolveWord } from "../core/lexicon.js";
 import { tokenizeHebrewVerse } from "../core/tokenize.js";
 import { normalizeStrongs } from "../core/strongs.js";
 import {
   countLearnedWords,
+  isWordLearned,
   markWordsLearned
 } from "../core/word-bank.js";
 import { openAuthPanel } from "./auth-panel.js";
@@ -61,7 +61,8 @@ function showContinue() {
   continueBtn.hidden = false;
 }
 
-function collectUnmarkedEntries(verses, difficulty) {
+/** Words in this reading that are not yet Known (still underlined). */
+function collectUnknownEntries(verses) {
   const byId = new Map();
 
   for (const verse of verses || []) {
@@ -75,11 +76,10 @@ function collectUnmarkedEntries(verses, difficulty) {
         tokenIndex: index + 1,
         strongs: tokenMeta?.strongs ?? null
       });
-      if (sense.rank == null) return;
-      if (!shouldHideWord(sense.rank, difficulty)) return;
 
       const id = normalizeStrongs(sense.strongs || tokenMeta?.strongs);
       if (!id || byId.has(id)) return;
+      if (isWordLearned(id)) return;
 
       byId.set(id, {
         strongs: id,
@@ -161,8 +161,7 @@ async function prepareEncourage(rating) {
   }
 
   const verses = api?.getDisplayedVerses?.() || [];
-  const difficulty = api?.getDifficulty?.() ?? 0;
-  const entries = collectUnmarkedEntries(verses, difficulty);
+  const entries = collectUnknownEntries(verses);
 
   try {
     await markWordsLearned(entries);

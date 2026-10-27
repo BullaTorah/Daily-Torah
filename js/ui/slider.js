@@ -1,12 +1,10 @@
-import { DIFFICULTY_STEPS } from "../core/difficulty.js";
+import {
+  DIFFICULTY_STEPS,
+  difficultyFromKnownCount
+} from "../core/difficulty.js";
 import { persistUserSettings } from "../core/user-settings.js";
-import { rerenderCurrent, setRenderState } from "./render.js";
-
-const DIFFICULTY_TAB_BASE_GAP_MS = 100;
-const DIFFICULTY_TAB_GAP_MULTIPLIER = 1.25;
 
 let currentDifficulty = 0;
-let difficultyTabAnimTimers = [];
 
 export function getCurrentDifficulty() {
   return currentDifficulty;
@@ -20,60 +18,25 @@ function updateTabUI(value) {
   });
 }
 
-function clearDifficultyTabAnimation() {
-  difficultyTabAnimTimers.forEach((id) => clearTimeout(id));
-  difficultyTabAnimTimers = [];
-}
-
-/** Walk the active tab from Beginner up to target (same cadence as aliyah numbers). */
-export function animateDifficultyTabs(targetValue = currentDifficulty) {
-  clearDifficultyTabAnimation();
-
-  const targetIndex = DIFFICULTY_STEPS.findIndex((s) => s.value === targetValue);
-  const finalIndex = targetIndex < 0 ? 0 : targetIndex;
-  const finalValue = DIFFICULTY_STEPS[finalIndex].value;
-
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    updateTabUI(finalValue);
-    return 0;
-  }
-
-  updateTabUI(DIFFICULTY_STEPS[0].value);
-  if (finalIndex <= 0) return 0;
-
-  let delay = 0;
-  let gap = DIFFICULTY_TAB_BASE_GAP_MS;
-
-  for (let step = 1; step <= finalIndex; step += 1) {
-    delay += gap;
-    const value = DIFFICULTY_STEPS[step].value;
-    difficultyTabAnimTimers.push(setTimeout(() => updateTabUI(value), delay));
-    gap *= DIFFICULTY_TAB_GAP_MULTIPLIER;
-  }
-
-  return delay;
-}
-
-export function setDifficulty(value, { persist = true, rerender = true, animate = false } = {}) {
+/** Persist preference only (underlines are Known-driven). */
+export function setDifficulty(value, { persist = true } = {}) {
   currentDifficulty = value;
-  setRenderState({ difficulty: value });
+  updateTabUI(value);
 
   if (persist) {
     persistUserSettings({ difficulty: value });
   }
-
-  if (animate) {
-    animateDifficultyTabs(value);
-  } else {
-    clearDifficultyTabAnimation();
-    updateTabUI(value);
-  }
-
-  if (rerender) {
-    rerenderCurrent();
-  }
 }
 
+/** Highlight the band that matches the user’s known-word count. */
+export function syncDifficultyTabsFromKnown(learnedCount) {
+  const value = difficultyFromKnownCount(learnedCount);
+  currentDifficulty = value;
+  updateTabUI(value);
+  return value;
+}
+
+/** Build non-clickable level tabs; highlight from known count or initial value. */
 export function initSlider(initialValue) {
   const container = document.getElementById("difficultyTabs");
   if (!container) return DIFFICULTY_STEPS;
@@ -88,11 +51,21 @@ export function initSlider(initialValue) {
     tab.textContent = step.label;
     tab.setAttribute("role", "tab");
     tab.id = `difficulty-tab-${index}`;
-    tab.addEventListener("click", () => setDifficulty(step.value));
+    tab.tabIndex = -1;
+    tab.setAttribute("aria-disabled", "true");
+    // Not clickable — visual indicator only
+    tab.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
     container.appendChild(tab);
   });
 
-  setDifficulty(initialValue, { persist: false, rerender: false });
-
+  setDifficulty(initialValue, { persist: false });
   return DIFFICULTY_STEPS;
+}
+
+/** No entrance walk — tabs just show the current band. */
+export function animateDifficultyTabs() {
+  return 0;
 }

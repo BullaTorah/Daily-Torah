@@ -1,15 +1,13 @@
 import { stripSefariaArtifacts } from "../core/lookup.js";
 import { resolveWord } from "../core/lexicon.js";
 import { tokenizeHebrewVerse } from "../core/tokenize.js";
-import { shouldHideWord } from "../core/difficulty.js";
-import {
-  createVerseBulkActions,
-  initVerseBulkActions
-} from "./verse-bulk-actions.js";
+import { isWordLearned, onLearnedWordsChange } from "../core/word-bank.js";
+import { initVerseBulkActions } from "./verse-bulk-actions.js";
+// createVerseBulkActions — How did you do? panel hidden for now
 
-let currentDifficulty = 0;
 let currentTitle = "";
 let globalVerses = [];
+let learnedRerenderBound = false;
 
 const HEBREW_ONES = ["", "א", "ב", "ג", "ד", "ה", "ו", "ז", "ח", "ט"];
 const HEBREW_TENS = ["", "י", "כ", "ל", "מ", "נ", "ס", "ע", "פ", "צ"];
@@ -49,9 +47,26 @@ function toHebrewNumeral(num) {
   return result;
 }
 
+/** Sync underlines to Known set without rebuilding the DOM (keeps popup anchors). */
+export function syncKnownUnderlines() {
+  document
+    .querySelectorAll(
+      "#content .word[data-strongs], #dailyVocabList .word[data-strongs], #practiceStoryHebrew .word[data-strongs]"
+    )
+    .forEach((el) => {
+      el.classList.toggle("no-highlight", isWordLearned(el.dataset.strongs));
+    });
+}
+
 export function initRender() {
   initVerseNumInteraction();
   initVerseBulkActions();
+  if (!learnedRerenderBound) {
+    learnedRerenderBound = true;
+    onLearnedWordsChange(() => {
+      syncKnownUnderlines();
+    });
+  }
 }
 
 let verseNumInteractionBound = false;
@@ -103,10 +118,9 @@ function initVerseNumInteraction() {
   content.addEventListener("pointercancel", restoreTouchedVerseNums);
 }
 
-export function setRenderState({ title, verses, difficulty }) {
+export function setRenderState({ title, verses }) {
   if (title !== undefined) currentTitle = title;
   if (verses !== undefined) globalVerses = verses;
-  if (difficulty !== undefined) currentDifficulty = difficulty;
 }
 
 export function getGlobalVerses() {
@@ -140,7 +154,6 @@ function renderHebrew(verse, {
       tokenIndex: index + 1,
       strongs: tokenMeta?.strongs ?? null
     });
-    const rank = sense.rank ?? 0;
     const tokenStrongs = String(sense.strongs || tokenMeta?.strongs || "").replace(
       /\D/g,
       ""
@@ -161,10 +174,11 @@ function renderHebrew(verse, {
         tokenPlain.includes(forceSurfacePlain) ||
         forceSurfacePlain.includes(tokenPlain));
     const isTarget = Boolean(isTargetByStrongs || isTargetBySurface);
+    // Underline = not yet Known; Known words are plain (personalized)
     const hide =
       forceId || forceSurfacePlain
         ? !isTarget
-        : shouldHideWord(rank, currentDifficulty);
+        : isWordLearned(sense.strongs || tokenMeta?.strongs);
 
     const el = document.createElement("span");
     const forceMode = Boolean(forceId || forceSurfacePlain);
@@ -207,8 +221,6 @@ function renderHebrew(verse, {
 
     if (animate) {
       el.classList.add("word-reveal");
-      el.dataset.revealText = token;
-      el.textContent = "";
       revealIndex += 1;
     }
 
@@ -219,12 +231,13 @@ function renderHebrew(verse, {
   return { container, nextWordOffset: revealIndex };
 }
 
-const WORD_REVEAL_STAGGER_MS = 200;
-const WORD_REVEAL_ACCELERATION = 1.15;
+const WORD_REVEAL_STAGGER_MS = 55;
+const WORD_REVEAL_ACCELERATION = 1.04;
 /** Beat after a verse's last Hebrew word before its English appears. */
-const ENGLISH_REVEAL_GAP_MS = 160;
+const ENGLISH_REVEAL_GAP_MS = 120;
 /** Hold after English before the next verse's Hebrew starts. */
-const ENGLISH_HOLD_MS = 320;
+const ENGLISH_HOLD_MS = 280;
+const WORD_FADE_MS = 420;
 let wordRevealTimers = [];
 
 function clearWordRevealTimers() {
@@ -267,7 +280,7 @@ function buildRevealPlan(content) {
     }
   });
 
-  return { steps, totalMs: t };
+  return { steps, totalMs: t + WORD_FADE_MS };
 }
 
 export function wordRevealDurationMs(wordCount) {
@@ -283,7 +296,6 @@ export function wordRevealDurationMs(wordCount) {
 }
 
 function revealWord(word) {
-  word.textContent = word.dataset.revealText || "";
   word.classList.add("word-shown");
 }
 
@@ -355,7 +367,8 @@ export function render(title, verses, { animate = false, animateDelay = 0 } = {}
     en.className = animate ? "english english-reveal" : "english";
     en.textContent = stripSefariaArtifacts(v.en);
 
-    verse.appendChild(createVerseBulkActions({ showHeading: verseIndex === 0 }));
+    // How did you do? panel — hidden for now
+    // verse.appendChild(createVerseBulkActions({ showHeading: verseIndex === 0 }));
     verse.appendChild(num);
     verse.appendChild(he);
     verse.appendChild(en);

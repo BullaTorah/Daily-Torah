@@ -34,25 +34,25 @@ function forHebrewDisplay(str) {
     .replace(/[\u0591-\u05AF\u05BD\u05BF]/g, "");
 }
 
+const GRAMMAR_LEAD_IN =
+  /(?:[,;:]?\s*)(?:making it|so it reads|so here it means|so it means)\s*$/i;
+
 /** Escape grammar text, rendering **bold** (exact translation) as <strong>. */
 function formatGrammarHtml(text, takeaway = "") {
   let source = String(text || "").trim();
   const gloss = String(takeaway || "").trim();
 
+  // Strip unfinished lead-ins like "making it" left by older model replies
+  source = source.replace(GRAMMAR_LEAD_IN, "").trim();
+
   if (gloss) {
-    // Keep model lead-in; append bold takeaway if not already present
     const already =
       source.includes(`**${gloss}**`) ||
       source.toLowerCase().includes(gloss.toLowerCase());
     if (!already) {
-      const leadIn = /(?:making it|so it reads|so here it means)\s*$/i.test(
-        source
-      );
-      source = leadIn
-        ? `${source} **${gloss}**.`
-        : `${source}${source && !/[.!?]$/.test(source) ? "." : ""} So here it means **${gloss}**.`;
+      if (source && !/[.!?]$/.test(source)) source = `${source}.`;
+      source = `${source}${source ? " " : ""}So here it means **${gloss}**.`;
     } else if (!/\*\*[^*]+\*\*/.test(source)) {
-      // Gloss is plain in the text — bold the last occurrence
       const idx = source.toLowerCase().lastIndexOf(gloss.toLowerCase());
       if (idx >= 0) {
         source =
@@ -746,25 +746,19 @@ export function initPopupHandlers(onWordClick) {
       if (popup.contains(e.target)) return;
 
       const word = e.target.closest(".word");
-      if (word && word !== activeAnchor) {
-        // Different word — let the click handler switch the popup
-        return;
-      }
-
-      // Walkthrough is demoing the popup — don't dismiss on outside / same-word taps
-      if (holdOpenForWalkthrough) {
-        if (word && word === activeAnchor) {
+      // Same or different word — leave it to the click → showPopup toggle/switch
+      if (word) {
+        if (holdOpenForWalkthrough && word === activeAnchor) {
           e.preventDefault();
           e.stopPropagation();
         }
         return;
       }
 
-      // Outside the popup (or the same word again): close fully
-      if (word && word === activeAnchor) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
+      // Walkthrough is demoing the popup — don't dismiss on outside taps
+      if (holdOpenForWalkthrough) return;
+
+      // Click outside the popup: close fully
       hidePopup();
     },
     true

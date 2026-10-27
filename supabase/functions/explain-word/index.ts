@@ -50,14 +50,14 @@ Part A — split the surface form into Hebrew parts yourself:
 
 Part B — a short reading note:
 - literal: a short literal English for THIS form in context (headline style), e.g. "And he went", "In the beginning", "The heavens". Not a dictionary dump. 2–6 words preferred.
-- grammar: 2–4 short sentences for a beginner about THIS word in THIS verse, then a final summary sentence.
+- grammar: 2–4 short complete sentences for a beginner about THIS word in THIS verse.
   Voice: everyday English. Fine to use simple words like plural, past, future, he/she, "the".
   Avoid jargon unless you briefly explain it in the same breath (e.g. never bare "construct" — say something like "a construct form, meaning it belongs with the next noun"). Prefer explaining the idea without the label when you can.
   If you mention how this word connects to other words in the verse, name those words specifically in Hebrew and/or English from the verse (e.g. "it pairs with מִבְחַר / 'choicest'"). Never say vague phrases like "nearby words", "the next word", or "other words in the sentence" without naming them.
   Do not invent verse facts. Stay grounded in the Hebrew/English verse given.
-  About 40–70 words for grammar (before takeaway).
-  End grammar with a short lead-in only, e.g. "making it" / "so it reads" / "so here it means" — do NOT put the English gloss inside grammar.
-  takeaway: the exact short English meaning alone (no quotes, no **), e.g. the choicest of. The app will bold this after your lead-in.
+  About 40–70 words. End on a finished sentence with a period — never trail off with "making it", "so it reads", "so here it means", or any unfinished lead-in.
+  Do NOT put the final English gloss inside grammar (that goes in takeaway).
+- takeaway: REQUIRED. The exact short English meaning alone (no quotes, no **), e.g. and you will rise early. The app will bold this after the grammar.
 
 Important JSON rules:
 - Return valid JSON only. Escape every double-quote inside string values as \\".
@@ -261,7 +261,7 @@ Deno.serve(async (req) => {
           {
             role: "system",
             content:
-              "You explain Biblical Hebrew in tiny plain bites for beginners. Separate the surface into prefix/root/suffix yourself, then add literal, grammar, and takeaway fields. No unexplained jargon. Name specific words when describing relationships. Put the exact English meaning ONLY in takeaway (no quotes/markdown). End grammar with a lead-in like making it. Never write more than one short sentence per en field. Output valid JSON only."
+              "You explain Biblical Hebrew in tiny plain bites for beginners. Separate the surface into prefix/root/suffix yourself, then add literal, grammar, and takeaway fields. No unexplained jargon. Name specific words when describing relationships. Put the exact English meaning ONLY in takeaway (required, no quotes/markdown). Grammar must end with a complete sentence — never trail off with making it / so it reads. Never write more than one short sentence per en field. Output valid JSON only."
           },
           { role: "user", content: buildPrompt(payload) }
         ]
@@ -291,8 +291,17 @@ Deno.serve(async (req) => {
     const prefix = partFrom(parsed?.prefix);
     const suffix = partFrom(parsed?.suffix);
     const literal = String(parsed?.literal || "").trim();
-    const grammar = String(parsed?.grammar || "").trim();
-    const takeaway = String(parsed?.takeaway || "").trim();
+    let grammar = String(parsed?.grammar || "").trim();
+    // Drop unfinished lead-ins the model sometimes leaves at the end
+    grammar = grammar
+      .replace(
+        /(?:[,;:]?\s*)(?:making it|so it reads|so here it means|so it means)\s*$/i,
+        ""
+      )
+      .trim();
+    if (grammar && !/[.!?]$/.test(grammar)) grammar = `${grammar}.`;
+    const takeaway =
+      String(parsed?.takeaway || "").trim() || literal || "";
 
     return jsonResponse({
       root,

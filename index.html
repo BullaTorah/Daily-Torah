@@ -28,7 +28,16 @@
     <div class="home-overlay-chrome-end">
       <button type="button" id="homeWalkthroughBtn" class="home-walkthrough-btn" hidden>How it works</button>
       <button type="button" id="homeSignInBtn" class="home-sign-in-btn">Sign in</button>
-      <button type="button" id="homeSignOutBtn" class="home-sign-out-btn" hidden>Sign out</button>
+      <div id="homeAuthBar" class="home-auth-bar" hidden>
+        <button type="button" id="homeProfileBtn" class="auth-profile-btn home-profile-btn" aria-haspopup="true" aria-expanded="false">
+          <span id="homeProfileName"></span>
+        </button>
+        <div id="homeAuthMenu" class="auth-menu" hidden role="menu">
+          <button type="button" id="homeWordBankBtn" role="menuitem">Practice words</button>
+          <button type="button" id="homeClearKnownBtn" role="menuitem">Clear Known words</button>
+          <button type="button" id="homeSignOutBtn" role="menuitem">Sign out</button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="home-overlay-main">
@@ -104,7 +113,7 @@
 
 <div id="difficultySticky">
   <div id="difficultyBar">
-    <div id="difficultyTabs" class="segment-tabs text-column" role="tablist"></div>
+    <div id="difficultyTabs" class="segment-tabs text-column" role="tablist" aria-label="Reading progress level"></div>
   </div>
   <div id="difficultyProgress" class="difficulty-progress text-column" hidden>
     <div class="difficulty-progress-track" aria-hidden="true">

@@ -34,22 +34,22 @@ export const WALKTHROUGH_STEPS = [
   },
   {
     id: "difficulty",
-    title: "Your level",
-    body: "A higher level means fewer underlines on the page. Feel free to change levels whenever you like—the goal is to keep reading.",
+    title: "Your progress",
+    body: "This bar tracks words you’ve marked as Known. The Beginner → Advanced labels are milestones—watch the bar grow as you learn.",
     mode: "spotlight",
-    anchor: "difficulty-controls"
+    anchor: "difficulty-progress"
   },
   {
     id: "word-count",
     title: "Known words",
-    body: "We keep track of the words you mark as Known. You can use this count as a rough guide for which level fits you best.",
+    body: "Every time you mark a word Known—on the page, in flashcards, or after Find my level—it counts here and drops its underline in the text.",
     mode: "spotlight",
     anchor: "difficulty-progress"
   },
   {
     id: "underlines",
     title: "The underline",
-    body: "If a word is above your chosen level, it appears underlined. Words without an underline are ones you most likely already know.",
+    body: "Words you haven’t marked Known yet are underlined. Once a word is Known, the underline goes away—so the page gets cleaner as you grow.",
     mode: "spotlight",
     anchor: "first-underline",
     underlinePadBottom: 10
@@ -57,7 +57,7 @@ export const WALKTHROUGH_STEPS = [
   {
     id: "tap",
     title: "The gloss",
-    body: "Tap any word to see a plain English translation. Changing your level only changes which words get underlines—not which words you can look up.",
+    body: "Tap any word for a plain English gloss. You can look up every word—underlines only show what you haven’t marked Known yet.",
     mode: "spotlight",
     anchor: "first-underline",
     openPopup: true

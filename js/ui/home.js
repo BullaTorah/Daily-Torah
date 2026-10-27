@@ -1,5 +1,10 @@
-import { isLoggedIn, signOut } from "../core/auth.js";
-import { countLearnedWords, onLearnedWordsChange, onWordBankChange } from "../core/word-bank.js";
+import { isLoggedIn, signOut, getUser } from "../core/auth.js";
+import {
+  countLearnedWords,
+  clearLearnedWords,
+  onLearnedWordsChange,
+  onWordBankChange
+} from "../core/word-bank.js";
 import { getWeeklyFlashLabel } from "../core/weekly-flashcards.js";
 import {
   TORAH_STRONGS_TOTAL,
@@ -9,10 +14,12 @@ import {
   progressTickPercent,
   progressSectionPercent
 } from "../core/difficulty.js";
+import { getProfileFirstName, loadUserProfile } from "../core/profile.js";
 import { shouldAutoOpenWalkthrough } from "../core/walkthrough.js";
 import { openAuthPanel } from "./auth-panel.js";
 import { isPlacementDone } from "../core/placement.js";
 import { openWalkthrough } from "./walkthrough-overlay.js";
+import { syncDifficultyTabsFromKnown } from "./slider.js";
 
 let api = null;
 let revealing = false;
@@ -23,6 +30,12 @@ function els() {
   return {
     overlay: document.getElementById("homeOverlay"),
     signInBtn: document.getElementById("homeSignInBtn"),
+    authBar: document.getElementById("homeAuthBar"),
+    profileBtn: document.getElementById("homeProfileBtn"),
+    profileName: document.getElementById("homeProfileName"),
+    authMenu: document.getElementById("homeAuthMenu"),
+    wordBankBtn: document.getElementById("homeWordBankBtn"),
+    clearKnownBtn: document.getElementById("homeClearKnownBtn"),
     signOutBtn: document.getElementById("homeSignOutBtn"),
     walkthroughBtn: document.getElementById("homeWalkthroughBtn"),
     progress: document.getElementById("homeProgress"),
@@ -229,6 +242,7 @@ function playDifficultyProgressEntrance(learned) {
   const totalLabel = TORAH_STRONGS_TOTAL.toLocaleString("en-US");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  syncDifficultyTabsFromKnown(learned);
   progress.hidden = false;
   progress.classList.remove("is-chrome-visible");
   fill.style.transition = "none";
@@ -294,10 +308,18 @@ function maybeAutoOpenWalkthrough() {
   return;
 }
 
+function closeHomeAuthMenu() {
+  const { authMenu, profileBtn } = els();
+  if (authMenu) authMenu.hidden = true;
+  profileBtn?.setAttribute("aria-expanded", "false");
+}
+
 async function refreshHomeChrome() {
   const {
     signInBtn,
-    signOutBtn,
+    authBar,
+    profileBtn,
+    profileName,
     progress,
     progressMeta,
     progressFill,
@@ -312,7 +334,22 @@ async function refreshHomeChrome() {
   const showPlacement = !isPlacementDone();
 
   if (signInBtn) signInBtn.hidden = loggedIn;
-  if (signOutBtn) signOutBtn.hidden = !loggedIn;
+  if (authBar) authBar.hidden = !loggedIn;
+  if (loggedIn) {
+    try {
+      await loadUserProfile();
+    } catch {
+      /* ignore */
+    }
+    if (profileName) profileName.textContent = getProfileFirstName();
+    profileBtn?.setAttribute(
+      "aria-label",
+      `Signed in as ${getUser()?.email || "user"}`
+    );
+  } else {
+    if (profileName) profileName.textContent = "";
+    closeHomeAuthMenu();
+  }
 
   if (placementBtn) {
     placementBtn.hidden = !showPlacement;
@@ -334,6 +371,7 @@ async function refreshHomeChrome() {
   if (!loggedIn) {
     if (progress) progress.hidden = true;
     if (difficulty.progress) difficulty.progress.hidden = true;
+    syncDifficultyTabsFromKnown(0);
     maybeAutoOpenWalkthrough();
     return;
   }
@@ -344,6 +382,8 @@ async function refreshHomeChrome() {
   } catch {
     learned = 0;
   }
+
+  syncDifficultyTabsFromKnown(learned);
 
   if (progress) {
     progress.hidden = false;
@@ -421,6 +461,10 @@ export function initHomeOverlay(handlers) {
   const {
     overlay,
     signInBtn,
+    profileBtn,
+    authMenu,
+    wordBankBtn,
+    clearKnownBtn,
     signOutBtn,
     walkthroughBtn,
     placementBtn,
@@ -444,7 +488,42 @@ export function initHomeOverlay(handlers) {
   }
 
   signInBtn?.addEventListener("click", () => openAuthPanel());
+  profileBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (!authMenu) return;
+    const open = authMenu.hidden;
+    authMenu.hidden = !open;
+    profileBtn.setAttribute("aria-expanded", open ? "true" : "false");
+  });
+  document.addEventListener("click", (e) => {
+    if (!authMenu || authMenu.hidden) return;
+    if (e.target.closest("#homeProfileBtn") || e.target.closest("#homeAuthMenu")) {
+      return;
+    }
+    closeHomeAuthMenu();
+  });
+  wordBankBtn?.addEventListener("click", () => {
+    closeHomeAuthMenu();
+    api?.openWordBank?.();
+  });
+  clearKnownBtn?.addEventListener("click", async () => {
+    closeHomeAuthMenu();
+    if (!isLoggedIn()) return;
+    const ok = window.confirm(
+      "Clear all Known words for your account? Your Practice words are left alone."
+    );
+    if (!ok) return;
+    try {
+      clearKnownBtn.disabled = true;
+      await clearLearnedWords();
+    } catch (err) {
+      window.alert(err?.message || "Could not clear known words.");
+    } finally {
+      clearKnownBtn.disabled = false;
+    }
+  });
   signOutBtn?.addEventListener("click", async () => {
+    closeHomeAuthMenu();
     try {
       await signOut();
     } catch {

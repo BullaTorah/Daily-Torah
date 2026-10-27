@@ -29,7 +29,7 @@ export function createVerseBulkActions({ showHeading = false } = {}) {
   knowPlain.type = "button";
   knowPlain.className = "verse-bulk-btn";
   knowPlain.dataset.verseAction = "known-plain";
-  knowPlain.textContent = "Knew only unmarked";
+  knowPlain.textContent = "Knew highlighted";
   nav.appendChild(knowPlain);
 
   return nav;
@@ -93,8 +93,10 @@ async function handleAction(btn) {
   if (action === "known-all") {
     entries = collectVerseEntries(verse, () => true);
   } else if (action === "known-plain") {
-    entries = collectVerseEntries(verse, (el) =>
-      el.classList.contains("no-highlight")
+    // Highlighted = not yet Known (personalized underlines)
+    entries = collectVerseEntries(
+      verse,
+      (el) => !el.classList.contains("no-highlight")
     );
   } else {
     return;

@@ -3,7 +3,10 @@ import {
   lookupSenses,
   resolveLexiconMode
 } from "./core/lexicon.js";
-import { resolveStoredDifficulty } from "./core/difficulty.js";
+import {
+  resolveStoredDifficulty,
+  difficultyFromKnownCount
+} from "./core/difficulty.js";
 import {
   fetchCalendar,
   fetchAliyahText,
@@ -29,7 +32,12 @@ import {
   clearProfileCache,
   loadUserProfile
 } from "./core/profile.js";
-import { loadWordBank, clearWordBank, seedKnownWordsForLevel } from "./core/word-bank.js";
+import {
+  loadWordBank,
+  clearWordBank,
+  seedKnownWordsForLevel,
+  countLearnedWords
+} from "./core/word-bank.js";
 import { getTahotRankedFrequency } from "./core/lookup-tahot.js";
 import {
   loadDailyVocabPractice,
@@ -47,8 +55,7 @@ import {
 import {
   initSlider,
   setDifficulty,
-  getCurrentDifficulty,
-  animateDifficultyTabs
+  getCurrentDifficulty
 } from "./ui/slider.js";
 import { initPopupHandlers, showPopup, hidePopup } from "./ui/popup.js";
 import { initAuthPanel, openAuthPanel } from "./ui/auth-panel.js";
@@ -143,10 +150,7 @@ function applyDisplayedVerses({ animate = false, animateDelay = 0 } = {}) {
   if (!fullVerses.length) return { entranceEndMs: 0 };
   const verses =
     readingMode === "three" ? fullVerses.slice(0, 3) : fullVerses;
-  const difficulty = sliderInitialized
-    ? getCurrentDifficulty()
-    : resolveStoredDifficulty(getUserDifficulty(0), 0);
-  setRenderState({ title: currentTitle, verses, difficulty });
+  setRenderState({ title: currentTitle, verses });
   const result = render(currentTitle, verses, { animate, animateDelay });
   resetReadingFeedback();
   return result || { entranceEndMs: 0 };
@@ -155,11 +159,9 @@ function applyDisplayedVerses({ animate = false, animateDelay = 0 } = {}) {
 async function revealReading(mode) {
   readingMode = mode === "three" ? "three" : "aliyah";
   const aliyahMs = setAliyahTabsUI(getActiveAliyahNumber(), { animate: true });
-  const difficultyMs = animateDifficultyTabs(getCurrentDifficulty());
-  const headerMs = Math.max(aliyahMs, difficultyMs);
   const { entranceEndMs } = applyDisplayedVerses({
     animate: true,
-    animateDelay: headerMs + 120
+    animateDelay: aliyahMs + 120
   });
   scheduleDifficultyProgressEntrance({ delayMs: entranceEndMs });
   hidePopup();
@@ -424,17 +426,12 @@ async function loadReadingInner() {
       initSlider(difficulty);
       sliderInitialized = true;
     } else {
-      setDifficulty(difficulty, { persist: false, rerender: false });
+      setDifficulty(difficulty, { persist: false });
     }
-
-    const difficultyMs = playEntrance
-      ? animateDifficultyTabs(difficulty)
-      : 0;
-    const headerMs = Math.max(aliyahMs, difficultyMs);
 
     const { entranceEndMs } = applyDisplayedVerses({
       animate: playEntrance,
-      animateDelay: playEntrance ? headerMs + 120 : 0
+      animateDelay: playEntrance ? aliyahMs + 120 : 0
     });
     if (playEntrance) {
       scheduleDifficultyProgressEntrance({ delayMs: entranceEndMs });
@@ -538,16 +535,21 @@ async function bootstrap() {
     onOpenWordBank: () => showWordBankPanel()
   });
   initPracticeStoryOverlay({
-    loadStory: () =>
-      loadPracticeStory({
-        level: sliderInitialized
-          ? getCurrentDifficulty()
-          : resolveStoredDifficulty(getUserDifficulty(0), 0),
+    loadStory: async () => {
+      let learned = 0;
+      try {
+        learned = await countLearnedWords();
+      } catch {
+        learned = 0;
+      }
+      return loadPracticeStory({
+        level: difficultyFromKnownCount(learned),
         ensureLexicon: async () => {
           if (getTahotRankedFrequency().length) return;
           await waitUntilReadingReady();
         }
-      })
+      });
+    }
   });
   initWordBankPanel({
     onPracticeStory: () => startPracticeStory()
@@ -557,6 +559,7 @@ async function bootstrap() {
   initPlacementOverlay({
     onPersistLevel: async (level) => {
       markPlacementDone(level);
+      // Persist preference only; underlines come from seeded Known words
       setDifficulty(level, { persist: true });
       if (isLoggedIn()) {
         try {
@@ -579,6 +582,7 @@ async function bootstrap() {
     openPracticeStory: () => startPracticeStory(),
     openWeeklyFlash: () => openWeeklyFlashOverlay(),
     openPlacement: () => openPlacementOverlay(),
+    openWordBank: () => showWordBankPanel(),
     isReadingReady: () => readingReady
   });
   initWalkthroughOverlay({
@@ -630,8 +634,6 @@ async function bootstrap() {
     },
     getDisplayedVerses: () =>
       readingMode === "three" ? fullVerses.slice(0, 3) : fullVerses,
-    getDifficulty: () =>
-      sliderInitialized ? getCurrentDifficulty() : getUserDifficulty(0),
     onWordsCredited: () => refreshHomeOverlay()
   });
 

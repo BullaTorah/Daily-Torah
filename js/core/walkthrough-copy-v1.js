@@ -18,23 +18,23 @@ export const WALKTHROUGH_COPY_V1 = [
   },
   {
     id: "difficulty",
-    title: "Choose your level",
-    body: "These tabs set how much help you get on the page. Higher levels underline fewer words—so you can start with more coaching and ease it back as reading gets more comfortable. Feel free to flip between levels as needed. The idea is to keep reading!"
+    title: "Watch your progress",
+    body: "The Words you know bar grows as you mark words Known. Beginner → Advanced labels are milestones along that path."
   },
   {
     id: "word-count",
     title: "Keep track of the words you know",
-    body: "We will add to this counter as you confirm that you understand words. As your Known words grow, it will serve as a rough guide for which level you should be reading in."
+    body: "We add to this counter whenever you confirm a word. As Known words grow, those words lose their underlines in the text."
   },
   {
     id: "underlines",
     title: "This underline is a coach",
-    body: "Underlined words sit above your current level—tap them when you want help. Words nearby without an underline are ones the app already treats as in your range, even if you don’t recognize that exact form yet. That gap—knowing you’re closer than it feels—is where real reading confidence comes from."
+    body: "Underlined words are ones you haven’t marked Known yet—tap them when you want help. Once a word is Known, the underline goes away."
   },
   {
     id: "tap",
     title: "Tap this word—or any word",
-    body: "Every word opens a plain English gloss. Changing your level only changes which words get underlines—not what you’re allowed to be curious about."
+    body: "Every word opens a plain English gloss. Underlines only show what you haven’t marked Known yet—you can look up anything."
   },
   {
     id: "explain",

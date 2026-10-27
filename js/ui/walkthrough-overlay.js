@@ -145,7 +145,6 @@ function getReadingSelectRect() {
 }
 
 function getDifficultyRect() {
-  // Clip to the tab row itself — not the full-bleed bar or tip-2 width
   return unionClientRects([document.getElementById("difficultyTabs")], {
     padX: 0,
     padTop: 0,
@@ -154,7 +153,6 @@ function getDifficultyRect() {
 }
 
 function getDifficultyProgressRect() {
-  const tabs = getDifficultyRect();
   const content = unionClientRects(
     [
       document.querySelector("#difficultyProgress .difficulty-progress-track"),
@@ -163,17 +161,14 @@ function getDifficultyProgressRect() {
     ],
     { padX: 0, padTop: 0, padBottom: 0 }
   );
-  if (!content && !tabs) return null;
+  if (!content) return null;
 
-  // Start flush under the level buttons; +20px wider than tabs; 10px below content
-  const baseLeft = tabs ? tabs.left : content.left;
-  const baseWidth = tabs ? tabs.width : content.width;
   const widen = 20;
   const padBottom = 10;
-  const left = baseLeft - widen / 2;
-  const width = baseWidth + widen;
-  const top = tabs ? tabs.bottom : content.top;
-  const bottom = (content ? content.bottom : top) + padBottom;
+  const left = content.left - widen / 2;
+  const width = content.width + widen;
+  const top = content.top;
+  const bottom = content.bottom + padBottom;
   return {
     top,
     left,

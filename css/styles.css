@@ -94,6 +94,8 @@ body {
   --hebrew-font: "Suez One", serif;
   font-family: var(--english-font);
   --english-color: var(--accent);
+  /* Shared wash for word underlines + Words I know progress */
+  --learn-wash: color-mix(in srgb, var(--english-color) 30%, transparent);
   --side-padding: max(24px, env(safe-area-inset-left));
   --num-col: 2.5em;
   --num-gap: 16px;
@@ -450,39 +452,44 @@ body.reading-animate #content {
   opacity: 1;
 }
 
-body.reading-animate .word.word-reveal:not(.word-shown) {
-  text-decoration: none;
+body.reading-animate .word.word-reveal {
+  opacity: 0;
+  transition: opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-body.reading-animate .word.word-reveal:not(.word-shown)::after {
-  display: none;
+body.reading-animate .word.word-reveal.word-shown {
+  opacity: 1;
 }
 
 body.reading-animate .english.english-reveal:not(.english-shown) {
   opacity: 0;
-  max-height: 0;
-  margin-top: 0;
-  overflow: hidden;
   pointer-events: none;
 }
 
 body.reading-animate .english.english-reveal.english-shown {
   opacity: 1;
-  max-height: 8em;
-  margin-top: 16px;
-  transition:
-    opacity 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    max-height 0.4s cubic-bezier(0.22, 1, 0.36, 1),
-    margin-top 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.reading-animate .verse-num,
+body.reading-animate .verse-bulk-actions {
+  opacity: 0;
+  transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body.reading-animate.reading-loaded .verse-num,
+body.reading-animate.reading-loaded .verse-bulk-actions {
+  opacity: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  body.reading-animate .word.word-reveal,
+  body.reading-animate .word.word-reveal.word-shown,
   body.reading-animate .english.english-reveal:not(.english-shown),
-  body.reading-animate .english.english-reveal.english-shown {
+  body.reading-animate .english.english-reveal.english-shown,
+  body.reading-animate .verse-num,
+  body.reading-animate .verse-bulk-actions {
     opacity: 1;
-    max-height: none;
-    margin-top: 16px;
-    overflow: visible;
     pointer-events: auto;
     transition: none;
   }
@@ -678,14 +685,15 @@ body.reading-animate .english.english-reveal.english-shown {
   padding: 0 5px;
 }
 
+/* Tall wash behind the lower ~30% of the letters */
 .word:not(.no-highlight)::after {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: calc(1em + 0.28em + 3px);
-  height: 3px;
-  background: var(--english-color);
+  bottom: 0;
+  height: calc(0.3em + 4px);
+  background: var(--learn-wash);
   pointer-events: none;
   z-index: -1;
 }
@@ -698,8 +706,8 @@ body.reading-animate .english.english-reveal.english-shown {
 @media (forced-colors: active) {
   .word:not(.no-highlight) {
     text-decoration: underline;
-    text-decoration-thickness: 3px;
-    text-underline-offset: calc(0.28em + 3px);
+    text-decoration-thickness: 0.3em;
+    text-underline-offset: 0;
     text-decoration-color: LinkText;
     text-decoration-skip-ink: none;
   }
@@ -712,8 +720,8 @@ body.reading-animate .english.english-reveal.english-shown {
 @media (prefers-contrast: more) {
   .word:not(.no-highlight) {
     text-decoration: underline;
-    text-decoration-thickness: 4px;
-    text-underline-offset: calc(0.28em + 3px);
+    text-decoration-thickness: 0.3em;
+    text-underline-offset: 0;
     text-decoration-color: #3d2f14;
     text-decoration-skip-ink: none;
   }
@@ -725,6 +733,10 @@ body.reading-animate .english.english-reveal.english-shown {
 
 .word.popup-active {
   background: transparent;
+}
+
+.word.popup-active::after {
+  display: none;
 }
 
 .word.popup-active::before {
@@ -966,8 +978,7 @@ body.reading-animate .english.english-reveal.english-shown {
 }
 
 #difficultySticky {
-  position: sticky;
-  top: 0;
+  position: relative;
   z-index: 100;
   width: 100%;
 }
@@ -998,6 +1009,8 @@ body.reading-animate .english.english-reveal.english-shown {
   border: none;
   background: var(--chrome-bg);
   color: var(--chrome-fg);
+  cursor: default;
+  pointer-events: none;
 }
 
 #difficultyTabs .segment-tab.active {
@@ -1042,7 +1055,7 @@ body.reading-animate .english.english-reveal.english-shown {
 .difficulty-progress-track {
   position: relative;
   height: 28px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--learn-wash);
   overflow: hidden;
   opacity: 0;
   transition:
@@ -2478,7 +2491,8 @@ html.mobile-preview .popup-explain-he {
     max(24px, env(safe-area-inset-bottom))
     max(24px, env(safe-area-inset-left));
   box-sizing: border-box;
-  overflow: hidden;
+  /* visible so the profile dropdown isn’t clipped; page scroll stays locked on body */
+  overflow: visible;
   opacity: 1;
   transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -2538,7 +2552,6 @@ body.home-open {
 
 /* Compact chrome link — not the tall CTA underline treatment */
 .home-overlay-chrome .home-sign-in-btn,
-.home-overlay-chrome .home-sign-out-btn,
 .home-overlay-chrome .home-walkthrough-btn {
   padding: 6px 0;
   line-height: 1.2;
@@ -2630,27 +2643,20 @@ body.home-open {
 }
 
 .home-sign-in-btn[hidden],
-.home-sign-out-btn[hidden] {
+.home-auth-bar[hidden] {
   display: none !important;
 }
 
-.home-sign-out-btn {
+.home-auth-bar {
   position: relative;
-  display: inline-block;
-  margin: 0;
-  border: none;
-  background: none;
+  flex-shrink: 0;
+  display: flex;
+  align-items: baseline;
+}
+
+.home-overlay-chrome .home-profile-btn {
   padding: 6px 0;
-  box-sizing: border-box;
-  font-family: var(--english-font);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--text-color);
-  text-align: center;
-  cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
+  color: var(--english-color);
 }
 
 .home-overlay-main {
@@ -2730,7 +2736,7 @@ body.home-open {
 .torah-progress-track {
   position: relative;
   height: 14px;
-  background: rgba(0, 0, 0, 0.08);
+  background: var(--learn-wash);
   overflow: visible;
 }
 
