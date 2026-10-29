@@ -628,6 +628,7 @@ async function bootstrap() {
   initReadingFeedback({
     shouldShowContinue: () =>
       readingMode === "three" && fullVerses.length > 3,
+    shouldCountStreak: () => readingMode === "three",
     onContinue: () => {
       readingMode = "aliyah";
       applyDisplayedVerses({ animate: false });

@@ -14,7 +14,11 @@ import {
   progressTickPercent,
   progressSectionPercent
 } from "../core/difficulty.js";
-import { getProfileFirstName, loadUserProfile } from "../core/profile.js";
+import {
+  getProfileFirstName,
+  getReadingStreak,
+  loadUserProfile
+} from "../core/profile.js";
 import { shouldAutoOpenWalkthrough } from "../core/walkthrough.js";
 import { openAuthPanel } from "./auth-panel.js";
 import { isPlacementDone } from "../core/placement.js";
@@ -38,6 +42,7 @@ function els() {
     clearKnownBtn: document.getElementById("homeClearKnownBtn"),
     signOutBtn: document.getElementById("homeSignOutBtn"),
     walkthroughBtn: document.getElementById("homeWalkthroughBtn"),
+    streak: document.getElementById("homeStreak"),
     progress: document.getElementById("homeProgress"),
     progressMeta: document.getElementById("homeProgressMeta"),
     progressFill: document.getElementById("homeProgressFill"),
@@ -320,6 +325,7 @@ async function refreshHomeChrome() {
     authBar,
     profileBtn,
     profileName,
+    streak,
     progress,
     progressMeta,
     progressFill,
@@ -369,6 +375,10 @@ async function refreshHomeChrome() {
   }
 
   if (!loggedIn) {
+    if (streak) {
+      streak.hidden = true;
+      streak.textContent = "";
+    }
     if (progress) progress.hidden = true;
     if (difficulty.progress) difficulty.progress.hidden = true;
     syncDifficultyTabsFromKnown(0);
@@ -384,6 +394,18 @@ async function refreshHomeChrome() {
   }
 
   syncDifficultyTabsFromKnown(learned);
+
+  const streakCount = getReadingStreak();
+  if (streak) {
+    if (streakCount > 0) {
+      streak.hidden = false;
+      streak.textContent =
+        streakCount === 1 ? "1-day streak" : `${streakCount}-day streak`;
+    } else {
+      streak.hidden = true;
+      streak.textContent = "";
+    }
+  }
 
   if (progress) {
     progress.hidden = false;

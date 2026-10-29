@@ -1,6 +1,7 @@
 import { isLoggedIn } from "../core/auth.js";
 import { resolveWord } from "../core/lexicon.js";
 import { tokenizeHebrewVerse } from "../core/tokenize.js";
+import { recordReadingStreak } from "../core/profile.js";
 import { normalizeStrongs } from "../core/strongs.js";
 import {
   countLearnedWords,
@@ -8,7 +9,7 @@ import {
   markWordsLearned
 } from "../core/word-bank.js";
 import { openAuthPanel } from "./auth-panel.js";
-import { paintTorahProgress } from "./home.js";
+import { paintTorahProgress, refreshHomeOverlay } from "./home.js";
 
 let api = null;
 let bound = false;
@@ -197,12 +198,24 @@ async function prepareEncourage(rating) {
   return after > before ? 2400 : 2000;
 }
 
+async function creditDailyStreak() {
+  if (!isLoggedIn()) return;
+  if (api?.shouldCountStreak && !api.shouldCountStreak()) return;
+  try {
+    const result = await recordReadingStreak();
+    if (result) refreshHomeOverlay();
+  } catch {
+    /* streak is best-effort */
+  }
+}
+
 function afterAnswer(rating) {
   const { ask, encourage, root } = els();
   if (!ask || !encourage || !root) return;
 
   answered = true;
   ask.classList.add("is-leaving");
+  void creditDailyStreak();
 
   window.setTimeout(async () => {
     ask.setAttribute("aria-hidden", "true");
