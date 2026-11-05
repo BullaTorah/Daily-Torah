@@ -186,10 +186,10 @@ async function openPracticeFromHome() {
       return;
     }
     showDailyVocabOverlay(practice);
-  } catch (err) {
-    showDailyVocabError(
-      err.message || "Could not load today’s vocabulary practice."
-    );
+  } catch {
+    showDailyVocabError(() => {
+      void openPracticeFromHome();
+    });
   }
 }
 
@@ -468,10 +468,11 @@ async function maybeOfferDailyVocab() {
     }
 
     showDailyVocabOverlay(practice);
-  } catch (err) {
-    showDailyVocabError(
-      err.message || "Could not load today’s vocabulary practice."
-    );
+  } catch {
+    showDailyVocabError(() => {
+      dailyVocabOfferedThisSession = false;
+      void maybeOfferDailyVocab();
+    });
   }
 }
 

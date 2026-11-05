@@ -34,19 +34,24 @@ function els() {
 function setLoadingState(loading) {
   const { panel } = els();
   panel?.classList.toggle("is-loading", loading);
+  if (loading) panel?.classList.remove("is-error");
 }
 
 function setStatus(message, { error = false } = {}) {
-  const { status } = els();
+  const { status, panel } = els();
   if (!status) return;
   status.hidden = !message;
   status.textContent = message || "";
   status.classList.toggle("is-error", error);
+  panel?.classList.toggle("is-error", error);
 }
 
 export function hideDailyVocabOverlay() {
   const { panel, card } = els();
-  if (panel) panel.hidden = true;
+  if (panel) {
+    panel.hidden = true;
+    panel.classList.remove("is-error");
+  }
   setLoadingState(false);
   if (card) {
     card.style.height = "";
@@ -86,7 +91,6 @@ function closeAndDismiss() {
 function buildItemElement(item, completed, index) {
   const card = document.createElement("article");
   card.className = "daily-vocab-item";
-  card.classList.add(index % 2 === 0 ? "is-tan" : "is-white");
   if (completed.has(item.strongs)) {
     card.classList.add("is-complete");
   }
@@ -459,20 +463,39 @@ export function showDailyVocabOverlay(cache) {
   window.setTimeout(finish, 650);
 }
 
-export function showDailyVocabError(message) {
-  const { panel, list, prevBtn, nextBtn, card } = els();
+export function showDailyVocabError(onRetry) {
+  const { panel, list, prevBtn, nextBtn, card, status } = els();
   if (!panel) return;
   panel.hidden = false;
+  panel.classList.add("is-error");
   if (card) {
     card.hidden = false;
     card.style.height = "";
     card.style.transition = "";
   }
   setLoadingState(true);
+  panel.classList.add("is-error");
   if (list) list.innerHTML = "";
   if (prevBtn) prevBtn.hidden = true;
   if (nextBtn) nextBtn.hidden = true;
-  setStatus(message || "Could not load practice verses.", { error: true });
+
+  if (status) {
+    status.hidden = false;
+    status.classList.add("is-error");
+    status.replaceChildren();
+    const text = document.createElement("p");
+    text.className = "daily-vocab-status-text";
+    text.textContent = "Something went wrong loading practice.";
+    status.appendChild(text);
+    if (typeof onRetry === "function") {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "daily-vocab-reload-btn";
+      btn.textContent = "Reload";
+      btn.addEventListener("click", () => onRetry());
+      status.appendChild(btn);
+    }
+  }
 }
 
 export function initDailyVocabOverlay() {

@@ -8,11 +8,14 @@
 <link rel="stylesheet" href="css/styles.css" />
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;600&display=swap" rel="stylesheet" />
 <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600&display=swap" rel="stylesheet" />
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;700&display=swap" rel="stylesheet" />
 <script>
   try {
     var t = localStorage.getItem("bulla-theme");
     if (t) document.documentElement.setAttribute("data-theme", t);
+    var hf = localStorage.getItem("bulla-hebrew-font");
+    if (hf) document.documentElement.setAttribute("data-hebrew-font", hf);
   } catch (e) {}
 </script>
 </head>
@@ -21,10 +24,16 @@
 
 <div id="homeOverlay" class="home-overlay" role="dialog" aria-labelledby="homeHeadline" aria-modal="true">
   <div class="home-overlay-chrome text-column">
-    <label class="theme-control theme-control-mobile">
-      <span class="theme-control-label">Theme</span>
-      <select id="themeSelectHome" class="theme-select" aria-label="Choose color theme"></select>
-    </label>
+    <div class="theme-menu theme-control-mobile">
+      <label class="theme-control">
+        <span class="theme-control-label">Theme</span>
+        <select id="themeSelectHome" class="theme-select" aria-label="Choose color theme"></select>
+      </label>
+      <label class="theme-control">
+        <span class="theme-control-label">Hebrew</span>
+        <select id="hebrewFontSelectHome" class="theme-select" aria-label="Choose Hebrew font"></select>
+      </label>
+    </div>
     <div class="home-overlay-chrome-end">
       <button type="button" id="homeWalkthroughBtn" class="home-walkthrough-btn" hidden>How it works</button>
       <button type="button" id="homeSignInBtn" class="home-sign-in-btn">Sign in</button>
@@ -78,10 +87,16 @@
     <div class="header-chrome">
       <button type="button" id="siteLogo" class="site-logo" aria-label="Home">BULLA TORAH</button>
       <div class="header-chrome-end">
-        <label class="theme-control theme-control-mobile">
-          <span class="theme-control-label">Theme</span>
-          <select id="themeSelectHeader" class="theme-select" aria-label="Choose color theme"></select>
-        </label>
+        <div class="theme-menu theme-control-mobile">
+          <label class="theme-control">
+            <span class="theme-control-label">Theme</span>
+            <select id="themeSelectHeader" class="theme-select" aria-label="Choose color theme"></select>
+          </label>
+          <label class="theme-control">
+            <span class="theme-control-label">Hebrew</span>
+            <select id="hebrewFontSelectHeader" class="theme-select" aria-label="Choose Hebrew font"></select>
+          </label>
+        </div>
         <div id="authBar" hidden>
           <button type="button" id="authSignInBtn" class="auth-text-btn">Sign in</button>
           <button type="button" id="authProfileBtn" class="auth-profile-btn" hidden aria-haspopup="true" aria-expanded="false">
@@ -282,7 +297,7 @@
 <div id="dailyVocabPanel" class="daily-vocab-panel" hidden>
   <div class="daily-vocab-backdrop" data-daily-vocab-close></div>
   <div class="daily-vocab-card" role="dialog" aria-labelledby="dailyVocabTitle" aria-modal="true">
-    <p id="dailyVocabStatus" class="daily-vocab-status" hidden></p>
+    <div id="dailyVocabStatus" class="daily-vocab-status" hidden></div>
     <div class="daily-vocab-header">
       <h2 id="dailyVocabTitle">Today’s practice</h2>
       <button type="button" class="daily-vocab-close" data-daily-vocab-close aria-label="Close">×</button>
@@ -351,9 +366,15 @@
   </div>
 </div>
 
-<div id="themeDock" class="theme-dock" aria-label="Color theme preview">
-  <span class="theme-dock-label">Theme</span>
-  <select id="themeSelect" class="theme-select" aria-label="Choose color theme"></select>
+<div id="themeDock" class="theme-dock" aria-label="Appearance">
+  <label class="theme-control">
+    <span class="theme-dock-label">Theme</span>
+    <select id="themeSelect" class="theme-select" aria-label="Choose color theme"></select>
+  </label>
+  <label class="theme-control">
+    <span class="theme-dock-label">Hebrew</span>
+    <select id="hebrewFontSelect" class="theme-select" aria-label="Choose Hebrew font"></select>
+  </label>
 </div>
 
 <script type="module" src="js/app.js"></script>

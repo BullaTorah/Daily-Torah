@@ -150,11 +150,27 @@ function isDockedPopup() {
 }
 
 function getColumnBounds() {
-  if (activeAnchor?.closest("#dailyVocabList")) {
-    const host = activeAnchor.closest(".daily-vocab-verse-host") ||
-      document.getElementById("dailyVocabList");
-    const rect = host?.getBoundingClientRect();
-    if (rect?.width) return rect;
+  // Practice overlay: always use the card’s content box so every word
+  // docks to the same width (list bleeds full-bleed; verse-host is narrower).
+  const practiceCard = activeAnchor?.closest("#dailyVocabPanel")?.querySelector(
+    ".daily-vocab-card"
+  );
+  if (practiceCard) {
+    const rect = practiceCard.getBoundingClientRect();
+    const style = window.getComputedStyle(practiceCard);
+    const padL = parseFloat(style.paddingLeft) || 0;
+    const padR = parseFloat(style.paddingRight) || 0;
+    const width = rect.width - padL - padR;
+    if (width > 0) {
+      return {
+        left: rect.left + padL,
+        width,
+        top: rect.top,
+        right: rect.right - padR,
+        bottom: rect.bottom,
+        height: rect.height
+      };
+    }
   }
 
   const content = document.getElementById("content");
@@ -687,8 +703,10 @@ export function showPopup(data, anchor) {
   }
 
   activeAnchor = anchor;
+  // Practice cards are white surface; cream popup matches contrast on all of them
+  // (is-tan / is-white no longer differ visually, so don’t flip per card).
   const onWhite = Boolean(
-    anchor.closest(".daily-vocab-item.is-white, .practice-story-card")
+    anchor.closest(".daily-vocab-item, .practice-story-card")
   );
   anchor.classList.add("popup-active");
   anchor.classList.toggle("is-on-white", onWhite);
