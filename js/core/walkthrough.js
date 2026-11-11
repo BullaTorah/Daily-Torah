@@ -21,7 +21,7 @@ export const WALKTHROUGH_STEPS = [
   {
     id: "welcome",
     title: "Closer than it feels",
-    body: "Most of the Torah is built from a few hundred common words. Bulla helps you find those words in the text, and keeps you reading as you grow.",
+    body: "Most of the Torah is built from a few hundred common words. Yad Torah helps you find those words in the text, and keeps you reading as you grow.",
     mode: "card",
     nextLabel: "Show how it works"
   },

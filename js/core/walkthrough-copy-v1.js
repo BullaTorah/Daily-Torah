@@ -8,7 +8,7 @@ export const WALKTHROUGH_COPY_V1 = [
   {
     id: "welcome",
     title: "You’re closer than it feels",
-    body: "A few hundred of the most common Hebrew words already cover most of what you’ll see in the Torah. The tricky part is knowing which ones those are—and even if you know most of the words, the ones you don’t know make reading frustrating. Bulla is built to get you reading for real, and steadily grow your comprehension while you enjoy the text. Click below when you’re ready to see how it works on the page.",
+    body: "A few hundred of the most common Hebrew words already cover most of what you’ll see in the Torah. The tricky part is knowing which ones those are—and even if you know most of the words, the ones you don’t know make reading frustrating. Yad Torah is built to get you reading for real, and steadily grow your comprehension while you enjoy the text. Click below when you’re ready to see how it works on the page.",
     nextLabel: "Show how it works"
   },
   {

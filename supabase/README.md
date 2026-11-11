@@ -23,8 +23,8 @@ Under **Authentication → URL Configuration**, set:
 
 | Setting | Value |
 |---------|-------|
-| Site URL | `https://bullatorah.github.io/Daily-Torah/` |
-| Redirect URLs | `https://bullatorah.github.io/Daily-Torah/`, `http://127.0.0.1:9876`, `http://localhost:9876` |
+| Site URL | `https://bullatorah.github.io/Yad-Torah/` |
+| Redirect URLs | `https://bullatorah.github.io/Yad-Torah/`, `http://127.0.0.1:9876`, `http://localhost:9876` |
 
 ## 4. App config
 
