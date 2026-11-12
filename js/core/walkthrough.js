@@ -42,7 +42,7 @@ export const WALKTHROUGH_STEPS = [
   {
     id: "word-count",
     title: "Known words",
-    body: "Every time you mark a word Known—on the page, in flashcards, or after Find my level—it counts here and drops its underline in the text.",
+    body: "Every time you mark a word Known—on the page or in flashcards—it counts here and drops its underline in the text.",
     mode: "spotlight",
     anchor: "difficulty-progress"
   },
@@ -83,7 +83,7 @@ export const WALKTHROUGH_STEPS = [
   {
     id: "start",
     title: "Get started",
-    body: "You can find your level, read three verses, or open today’s portion. Sign in when you want your progress to stay with you.",
+    body: "Read three verses or open today’s portion. Sign in when you want your progress to stay with you.",
     mode: "spotlight",
     anchor: "home-start"
   }

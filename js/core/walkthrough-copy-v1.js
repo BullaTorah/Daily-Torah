@@ -49,6 +49,6 @@ export const WALKTHROUGH_COPY_V1 = [
   {
     id: "start",
     title: "Start in a way that fits",
-    body: "Unsure where you are? Use Find my level. Otherwise jump into Read three verses or Today’s portion. Sign in when you want saving, Explain, and practice to stick with you."
+    body: "Jump into Read three verses or Today’s portion. Sign in when you want saving, Explain, and practice to stick with you."
   }
 ];

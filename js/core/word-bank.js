@@ -63,9 +63,17 @@ export function isWordSaved(strongs) {
   return id ? savedIds.has(id) : false;
 }
 
-export function isWordLearned(strongs) {
+function strongsLookupKeys(strongs) {
   const id = normalizeStrongs(strongs);
-  return id ? learnedIds.has(id) : false;
+  if (!id) return [];
+  const bare = id.replace(/^0+/, "") || "0";
+  const keys = [id, bare];
+  if (bare !== id) keys.push(bare.padStart(Math.max(id.length, 4), "0"));
+  return keys;
+}
+
+export function isWordLearned(strongs) {
+  return strongsLookupKeys(strongs).some((key) => learnedIds.has(key));
 }
 
 export async function loadWordBank() {
@@ -109,8 +117,7 @@ export async function loadWordBank() {
 
   learnedIds.clear();
   (learnedRes.data || []).forEach((row) => {
-    const id = normalizeStrongs(row.strongs);
-    if (id) learnedIds.add(id);
+    strongsLookupKeys(row.strongs).forEach((key) => learnedIds.add(key));
   });
   learnedLoaded = true;
   notifyListeners();
@@ -336,7 +343,7 @@ export async function markWordLearned({
 
   if (error) throw error;
 
-  learnedIds.add(id);
+  strongsLookupKeys(id).forEach((key) => learnedIds.add(key));
   learnedLoaded = true;
   notifyLearnedListeners();
 

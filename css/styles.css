@@ -2997,8 +2997,7 @@ body.home-open {
 
 #homePracticeBtn[hidden],
 #homeStoryBtn[hidden],
-#homeWeeklyFlashBtn[hidden],
-#homePlacementBtn[hidden] {
+#homeWeeklyFlashBtn[hidden] {
   display: none !important;
 }
 

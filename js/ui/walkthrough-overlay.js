@@ -183,7 +183,6 @@ function getHomeStartRect() {
   // CTAs mentioned in tip 9 — only visible ones
   return unionClientRects(
     [
-      document.getElementById("homePlacementBtn"),
       document.getElementById("homeThreeBtn"),
       document.getElementById("homeTodayBtn"),
       document.getElementById("homeSignInBtn")

@@ -110,7 +110,8 @@ export function getWeeklyFlashLabel() {
 }
 
 /**
- * Ensure a set exists. Syncs knownInSet with the real Known words list.
+ * Ensure a set exists. The practice deck is the next unknown words only
+ * (already-Known Strong's are skipped). Syncs knownInSet with the real list.
  * @returns {{ strongs: string[], knownInSet: string[], setIndex: number, complete: boolean, cards: object[] }}
  */
 export function ensureWeeklyFlashSet() {
@@ -119,21 +120,13 @@ export function ensureWeeklyFlashSet() {
     const strongs = pickNextWeeklyStrongs(WEEKLY_SET_SIZE);
     state = {
       strongs,
-      knownInSet: strongs.filter((id) => isWordLearned(id)),
+      knownInSet: [],
       setIndex: 1
     };
     writeState(state);
   } else {
-    // Drop unusable Strong's (no lemma) and top up the set
-    const usable = state.strongs.filter((id) => entryFromStrongs(id));
-    let strongs = usable;
-    if (strongs.length < WEEKLY_SET_SIZE) {
-      const fillers = pickNextWeeklyStrongs(
-        WEEKLY_SET_SIZE - strongs.length,
-        strongs
-      );
-      strongs = [...strongs, ...fillers];
-    }
+    // Keep assigned set, drop unusable ids, sync which are already Known
+    const strongs = state.strongs.filter((id) => entryFromStrongs(id));
     const knownInSet = [
       ...new Set([
         ...state.knownInSet.filter((id) => strongs.includes(id)),
@@ -144,25 +137,28 @@ export function ensureWeeklyFlashSet() {
     writeState(state);
   }
 
+  // Practice only words not yet Known — skip ones marked known already
   const cards = state.strongs
+    .filter((id) => !isWordLearned(id))
     .map((id) => {
       const entry = entryFromStrongs(id);
       if (!entry) return null;
       return {
         ...entry,
-        known: state.knownInSet.includes(id) || isWordLearned(id)
+        known: false
       };
     })
     .filter(Boolean);
 
+  const knownCount = state.strongs.filter((id) => isWordLearned(id)).length;
   const complete =
-    cards.length > 0 && cards.every((card) => card.known);
+    state.strongs.length > 0 && cards.length === 0;
 
   return {
     ...state,
     cards,
     complete,
-    knownCount: cards.filter((card) => card.known).length
+    knownCount
   };
 }
 

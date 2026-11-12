@@ -21,7 +21,6 @@ import {
 } from "../core/profile.js";
 import { shouldAutoOpenWalkthrough } from "../core/walkthrough.js";
 import { openAuthPanel } from "./auth-panel.js";
-import { isPlacementDone } from "../core/placement.js";
 import { openWalkthrough } from "./walkthrough-overlay.js";
 import { syncDifficultyTabsFromKnown } from "./slider.js";
 
@@ -47,7 +46,6 @@ function els() {
     progressMeta: document.getElementById("homeProgressMeta"),
     progressFill: document.getElementById("homeProgressFill"),
     progressMarkers: document.getElementById("homeProgressMarkers"),
-    placementBtn: document.getElementById("homePlacementBtn"),
     threeBtn: document.getElementById("homeThreeBtn"),
     todayBtn: document.getElementById("homeTodayBtn"),
     practiceBtn: document.getElementById("homePracticeBtn"),
@@ -124,9 +122,8 @@ export function showHomeOverlay() {
 }
 
 function setCtasEnabled(enabled) {
-  const { placementBtn, threeBtn, todayBtn, practiceBtn, storyBtn, weeklyFlashBtn } =
-    els();
-  [placementBtn, threeBtn, todayBtn].forEach((btn) => {
+  const { threeBtn, todayBtn, practiceBtn, storyBtn, weeklyFlashBtn } = els();
+  [threeBtn, todayBtn].forEach((btn) => {
     if (btn && !btn.hidden) btn.disabled = !enabled;
   });
   if (practiceBtn && !practiceBtn.hidden) {
@@ -330,14 +327,12 @@ async function refreshHomeChrome() {
     progressMeta,
     progressFill,
     progressMarkers,
-    placementBtn,
     practiceBtn,
     storyBtn,
     weeklyFlashBtn
   } = els();
   const difficulty = difficultyProgressEls();
   const loggedIn = isLoggedIn();
-  const showPlacement = !isPlacementDone();
 
   if (signInBtn) signInBtn.hidden = loggedIn;
   if (authBar) authBar.hidden = !loggedIn;
@@ -357,13 +352,10 @@ async function refreshHomeChrome() {
     closeHomeAuthMenu();
   }
 
-  if (placementBtn) {
-    placementBtn.hidden = !showPlacement;
-  }
-
   // Practice tools stay visible; click handlers gate on login / word bank
   if (practiceBtn) practiceBtn.hidden = false;
-  if (storyBtn) storyBtn.hidden = false;
+  // Practice story — hidden for now (feature kept for soon)
+  if (storyBtn) storyBtn.hidden = true;
   if (weeklyFlashBtn) {
     weeklyFlashBtn.hidden = false;
     weeklyFlashBtn.textContent = getWeeklyFlashLabel();
@@ -489,7 +481,6 @@ export function initHomeOverlay(handlers) {
     clearKnownBtn,
     signOutBtn,
     walkthroughBtn,
-    placementBtn,
     threeBtn,
     todayBtn,
     practiceBtn,
@@ -555,9 +546,6 @@ export function initHomeOverlay(handlers) {
   });
   walkthroughBtn?.addEventListener("click", () => {
     openWalkthrough({ fromStart: true });
-  });
-  placementBtn?.addEventListener("click", () => {
-    api?.openPlacement?.();
   });
   threeBtn?.addEventListener("click", () => reveal("three"));
   todayBtn?.addEventListener("click", () => reveal("aliyah"));
